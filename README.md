@@ -53,7 +53,7 @@ A high-performance, WebGL-accelerated custom Lovelace card inspired by the **Wes
 ### YAML Configuration Example
 
 ```yaml
-type: custom:rehoboam-card
+type: custom:lovelace-rehoboam
 theme_mode: dark
 height: 550px
 eclipse_angle: 180
@@ -93,7 +93,7 @@ entities:
 
 | Parameter | Type | Default | Description |
 | --------- | ---- | ------- | ----------- |
-| `type` | string | **Required** | `custom:rehoboam-card` (or `custom:lovelace-rehoboam`) |
+| `type` | string | **Required** | `custom:lovelace-rehoboam` |
 | `theme_mode` | string | `dark` | Visual theme: `dark` (night eclipse) or `light` (ink) |
 | `height` | string | `100vh` | Card height in CSS units (e.g. `100vh`, `600px`, `450px`) |
 | `eclipse_angle` | number | `180` | Eclipse bloom orientation angle in degrees (`0` - `360`) |
