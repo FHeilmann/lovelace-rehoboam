@@ -3,7 +3,7 @@
  * 1. Directional baseline-to-critical clamping: (val - baseline) / (critical - baseline) clamped to [0, 1]
  *    Automatically detects low=good/high=bad (critical > baseline) vs high=good/low=bad (critical < baseline).
  * 2. Smooth Raised-Cosine (Hann) sine-wave amplitude peaks (zero derivative at apex, no solid sharp needle spike).
- * 3. Full Lovelace Visual Configuration Editor (`rehoboam-card-editor` via `getConfigElement()`).
+ * 3. Full Lovelace Visual Configuration Editor (`lovelace-rehoboam-editor` via `getConfigElement()`).
  */
 
 const LUT_SIZE = 1024;
@@ -197,7 +197,7 @@ function computeDirectionalDivergence(val, baseline, critical) {
 }
 
 // ============================================================================
-// VISUAL LOVELACE CONFIG EDITOR (<rehoboam-card-editor>)
+// VISUAL LOVELACE CONFIG EDITOR (<lovelace-rehoboam-editor>)
 // ============================================================================
 class RehoboamCardEditor extends HTMLElement {
   constructor() {
@@ -624,16 +624,16 @@ class RehoboamCardEditor extends HTMLElement {
   }
 }
 
-if (!customElements.get('rehoboam-card-editor')) {
-  customElements.define('rehoboam-card-editor', RehoboamCardEditor);
+if (!customElements.get('lovelace-rehoboam-editor')) {
+  customElements.define('lovelace-rehoboam-editor', RehoboamCardEditor);
 }
 
 // ============================================================================
-// MAIN LOVELACE CARD (<rehoboam-card>)
+// MAIN LOVELACE CARD (<lovelace-rehoboam>)
 // ============================================================================
 class RehoboamCard extends HTMLElement {
   static getConfigElement() {
-    return document.createElement('rehoboam-card-editor');
+    return document.createElement('lovelace-rehoboam-editor');
   }
 
   static getStubConfig() {
@@ -1336,18 +1336,14 @@ class RehoboamCard extends HTMLElement {
   }
 }
 
-if (!customElements.get('rehoboam-card')) {
-  customElements.define('rehoboam-card', RehoboamCard);
-}
-
 if (!customElements.get('lovelace-rehoboam')) {
   customElements.define('lovelace-rehoboam', RehoboamCard);
 }
 
 window.customCards = window.customCards || [];
-if (!window.customCards.some(c => c.type === 'rehoboam-card')) {
+if (!window.customCards.some(c => c.type === 'lovelace-rehoboam')) {
   window.customCards.push({
-    type: 'rehoboam-card',
+    type: 'lovelace-rehoboam',
     name: 'Rehoboam Divergence Card',
     description: 'Westworld Rehoboam predictive divergence visualization'
   });
