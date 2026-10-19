@@ -22,6 +22,35 @@ const LAYER_CONFIG = [
   { cutoff: 105.0,pow: 1.05, lobeFreq: 0.06, height: 0.24, baseAmp: 0.068, freq1: 4,  freq2: 11, speed: 0.30, phase: 2.8, offsetBins: -10 }
 ];
 
+// Precomputed 4096-entry periodic sine LUT (fits in 16 KB L1 cache on Cortex-A53)
+const SIN_LUT_SIZE = 4096;
+const SIN_LUT_MASK = SIN_LUT_SIZE - 1;
+const COS_LUT_OFFSET = SIN_LUT_SIZE >> 2;
+const RAD_TO_SIN_IDX = SIN_LUT_SIZE / TWO_PI;
+const FAST_SIN_LUT = new Float32Array(SIN_LUT_SIZE);
+for (let i = 0; i < SIN_LUT_SIZE; i++) {
+  FAST_SIN_LUT[i] = Math.sin((i / SIN_LUT_SIZE) * TWO_PI);
+}
+
+// Precomputed per-layer Hann window envelopes & flank weights indexed by integer dBin
+const LAYER_ENV_BASE = [];
+const LAYER_ENV_MOD = [];
+for (let k = 0; k < LAYER_CONFIG.length; k++) {
+  const cfg = LAYER_CONFIG[k];
+  const len = cfg.cutoff | 0;
+  const baseArr = new Float32Array(len);
+  const modArr = new Float32Array(len);
+  for (let dBin = 0; dBin < len; dBin++) {
+    const hann = 0.5 * (1.0 + Math.cos(Math.PI * (dBin / cfg.cutoff)));
+    const env = Math.pow(hann, cfg.pow);
+    const flankWeight = k === 0 ? Math.min(1.0, (dBin / 7.5) * (dBin / 7.5)) : 1.0;
+    baseArr[dBin] = cfg.height * env * (1.0 - 0.26 * flankWeight);
+    modArr[dBin] = cfg.height * env * flankWeight;
+  }
+  LAYER_ENV_BASE.push(baseArr);
+  LAYER_ENV_MOD.push(modArr);
+}
+
 const VERTEX_SHADER = `
   attribute vec2 a_pos;
   varying vec2 v_uv;
@@ -42,6 +71,7 @@ const FRAGMENT_SHADER = `
   uniform float u_light_mode;
   uniform float u_amp_scale;
   uniform float u_ray_intensity;
+  uniform float u_px_size;
 
   float fastAtan01(vec2 p) {
     vec2 a = abs(p);
@@ -56,16 +86,15 @@ const FRAGMENT_SHADER = `
     return r;
   }
 
-  float evalRibbon(float r, float rBase, float disp, float fillAlpha, float edgeAlpha, float edgeSharpness) {
+  float evalRibbon(float r, float rBase, float innerStep, float disp, float fillAlpha, float edgeAlpha, float edgeSharpness, float px) {
     float rTop = rBase + disp;
     float vis = step(0.0012, disp);
-    float body = smoothstep(rBase - 0.004, rBase + 0.003, r) *
-                 (1.0 - smoothstep(rTop - 0.005, rTop + 0.0035, r));
+    float body = innerStep * (1.0 - smoothstep(rTop - px * 1.4, rTop + px, r));
     float grad = 0.58 + 0.42 * clamp((r - rBase) / (disp + 0.0001), 0.0, 1.0);
     float dEdge = (r - rTop) * edgeSharpness;
     float rim = (1.0 / (1.0 + dEdge * dEdge)) *
-                smoothstep(rBase - 0.002, rBase + 0.003, r) *
-                (1.0 - smoothstep(rTop + 0.003, rTop + 0.012, r));
+                innerStep *
+                (1.0 - smoothstep(rTop + px, rTop + px * 3.4, r));
     return (body * fillAlpha * grad + rim * edgeAlpha) * vis;
   }
 
@@ -73,18 +102,10 @@ const FRAGMENT_SHADER = `
     float r = length(v_uv);
     float angle01 = fastAtan01(v_uv);
 
-    vec4 L0_3 = texture2D(u_lut, vec2(angle01, 0.25));
     vec4 L4_7 = texture2D(u_lut, vec2(angle01, 0.75));
-
-    float maxRange = 0.58 * u_amp_scale;
-    float d0 = L0_3.r * maxRange;
-    float d1 = L0_3.g * maxRange;
-    float d2 = L0_3.b * maxRange;
-    float d3 = L0_3.a * maxRange;
-    float d4 = L4_7.r * maxRange;
-    float d5 = L4_7.g * maxRange;
-    float d6 = L4_7.b * maxRange;
     float rayStriation = L4_7.a;
+    // Decode sqrt-compressed LUT channels for 8x finer low-amplitude precision
+    vec3 L4_6 = L4_7.rgb * L4_7.rgb;
 
     vec2 dir = v_uv / (r + 1e-5);
     float align01 = clamp(dot(dir, u_eclipse_dir) * 0.5 + 0.5, 0.0, 1.0);
@@ -95,54 +116,85 @@ const FRAGMENT_SHADER = `
     vec2 innerCenter = -u_eclipse_dir * (0.032 * u_eclipse);
     float rInner = length(v_uv - innerCenter);
 
-    float innerErode = (L4_7.g + L4_7.b) * 0.010;
+    float innerErode = (L4_6.g + L4_6.b) * 0.010;
     float innerRadius = 0.992 - 0.014 * u_eclipse - innerErode;
     float dInner = rInner - innerRadius;
+    float maxRange = 0.58 * u_amp_scale;
 
-    // Consistent semi-transparent opacities across all 7 wave strata
-    float trans = 1.0;
-    trans *= (1.0 - evalRibbon(r, innerRadius, d0, 0.19, 0.35, 200.0));
-    trans *= (1.0 - evalRibbon(r, innerRadius, d1, 0.17, 0.32, 195.0));
-    trans *= (1.0 - evalRibbon(r, innerRadius, d2, 0.16, 0.29, 185.0));
-    trans *= (1.0 - evalRibbon(r, innerRadius, d3, 0.15, 0.27, 175.0));
-    trans *= (1.0 - evalRibbon(r, innerRadius, d4, 0.14, 0.25, 168.0));
-    trans *= (1.0 - evalRibbon(r, innerRadius, d5, 0.13, 0.23, 160.0));
-    trans *= (1.0 - evalRibbon(r, innerRadius, d6, 0.12, 0.21, 152.0));
+    // Only evaluate the 7 wave strata within the active radial ring band (skips ~75% of screen pixels)
+    float strataDensity = 0.0;
+    if (dInner > -0.004 && r < innerRadius + maxRange + 0.015) {
+      vec4 L0_3 = texture2D(u_lut, vec2(angle01, 0.25));
+      L0_3 *= L0_3;
 
-    float dRim = (r - innerRadius) * 180.0;
-    float baseRim = (1.0 / (1.0 + dRim * dRim)) * 0.72;
-    trans *= (1.0 - baseRim);
+      float d0 = L0_3.r * maxRange;
+      float d1 = L0_3.g * maxRange;
+      float d2 = L0_3.b * maxRange;
+      float d3 = L0_3.a * maxRange;
+      float d4 = L4_6.r * maxRange;
+      float d5 = L4_6.g * maxRange;
+      float d6 = L4_6.b * maxRange;
 
-    float strataDensity = 1.0 - trans;
+      float innerStep = smoothstep(innerRadius - u_px_size, innerRadius + u_px_size, r);
+      float trans = 1.0;
+      trans *= (1.0 - evalRibbon(r, innerRadius, innerStep, d0, 0.19, 0.35, 200.0, u_px_size));
+      trans *= (1.0 - evalRibbon(r, innerRadius, innerStep, d1, 0.17, 0.32, 195.0, u_px_size));
+      trans *= (1.0 - evalRibbon(r, innerRadius, innerStep, d2, 0.16, 0.29, 185.0, u_px_size));
+      trans *= (1.0 - evalRibbon(r, innerRadius, innerStep, d3, 0.15, 0.27, 175.0, u_px_size));
+      trans *= (1.0 - evalRibbon(r, innerRadius, innerStep, d4, 0.14, 0.25, 168.0, u_px_size));
+      trans *= (1.0 - evalRibbon(r, innerRadius, innerStep, d5, 0.13, 0.23, 160.0, u_px_size));
+      trans *= (1.0 - evalRibbon(r, innerRadius, innerStep, d6, 0.12, 0.21, 152.0, u_px_size));
 
-    float dLimb = max(0.0, dInner);
+      float dRim = (r - innerRadius) * 180.0;
+      float baseRim = (1.0 / (1.0 + dRim * dRim)) * 0.72;
+      trans *= (1.0 - baseRim);
 
-    float coreWidth = 0.005 + u_eclipse * (0.012 + 0.092 * align6);
-    float cCore = dLimb / coreWidth;
-    float coreCrescent = (1.0 / (1.0 + cCore * cCore * 1.15 + cCore * cCore * cCore * cCore * 0.42))
-                       * u_eclipse * (0.38 + 1.90 * align4);
+      strataDensity = 1.0 - trans;
+    }
 
-    float haloWidth = 0.022 + u_eclipse * (0.040 + 0.20 * align4);
-    float cHalo = dLimb / haloWidth;
-    float smoothHalo = (1.0 / (1.0 + cHalo * cHalo * 1.8 + cHalo * cHalo * cHalo * cHalo * 0.6))
-                     * u_eclipse * (0.08 + 0.36 * align4);
+    float coreCrescent = 0.0;
+    float smoothHalo = 0.0;
+    float outerRays = 0.0;
+    float eclipseBloom = 0.0;
 
-    float rayStretch = 1.0 + (0.48 * rayStriation) * u_ray_intensity;
-    float rayWidth = (0.016 + u_eclipse * (0.028 + 0.19 * align4)) * rayStretch;
-    float cRay = dLimb / rayWidth;
-    float cRay2 = cRay * cRay;
-    float outerRays = (1.0 / (1.0 + cRay2 * 1.8 + cRay2 * cRay2 * 0.85))
-                    * u_eclipse * (0.10 + 0.52 * align4) * rayStriation * u_ray_intensity;
+    if (dInner > -0.015 && u_eclipse > 0.001) {
+      float dLimb = max(0.0, dInner);
 
-    float eclipseBloom = (coreCrescent + smoothHalo + outerRays) * smoothstep(-0.015, 0.008, dInner);
+      float coreWidth = 0.005 + u_eclipse * (0.012 + 0.092 * align6);
+      float cCore = dLimb / coreWidth;
+      float cCore2 = cCore * cCore;
+      coreCrescent = (1.0 / (1.0 + cCore2 * 1.15 + cCore2 * cCore2 * 0.42))
+                   * u_eclipse * (0.38 + 1.90 * align4);
+
+      float haloWidth = 0.022 + u_eclipse * (0.040 + 0.20 * align4);
+      float cHalo = dLimb / haloWidth;
+      float cHalo2 = cHalo * cHalo;
+      smoothHalo = (1.0 / (1.0 + cHalo2 * 1.8 + cHalo2 * cHalo2 * 0.6))
+                 * u_eclipse * (0.08 + 0.36 * align4);
+
+      float rayStretch = 1.0 + (0.48 * rayStriation) * u_ray_intensity;
+      float rayWidth = (0.016 + u_eclipse * (0.028 + 0.19 * align4)) * rayStretch;
+      float cRay = dLimb / rayWidth;
+      float cRay2 = cRay * cRay;
+      outerRays = (1.0 / (1.0 + cRay2 * 1.8 + cRay2 * cRay2 * 0.85))
+                * u_eclipse * (0.10 + 0.52 * align4) * rayStriation * u_ray_intensity;
+
+      eclipseBloom = (coreCrescent + smoothHalo + outerRays) * smoothstep(-0.015, 0.008, dInner);
+    }
 
     float diskMask = smoothstep(-0.0035, 0.0035, dInner);
-    float wrapWidth = 0.006 + u_eclipse * (0.012 + 0.065 * align6);
-    float dWrap = max(0.0, -dInner) / wrapWidth;
     float innerRadialFade = smoothstep(0.75, 0.98, rInner);
-    float innerWrap = (1.0 / (1.0 + dWrap * dWrap * 2.2))
-                    * (0.08 + u_eclipse * (0.45 + 1.15 * align6))
-                    * innerRadialFade;
+    float innerWrap = 0.0;
+    if (dInner < 0.0035 && rInner > 0.75) {
+      float wrapWidth = 0.006 + u_eclipse * (0.012 + 0.065 * align6);
+      float dWrap = max(0.0, -dInner) / wrapWidth;
+      innerWrap = (1.0 / (1.0 + dWrap * dWrap * 2.2))
+                * (0.08 + u_eclipse * (0.45 + 1.15 * align6))
+                * innerRadialFade;
+    }
+
+    // Interleaved gradient noise dither (+/- 0.5 LSB) eliminates 8-bit Mach banding on tablet panels
+    float dither = (fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))) - 0.5) * (1.0 / 255.0);
 
     if (u_light_mode < 0.5) {
       vec3 bgCol = vec3(0.024, 0.024, 0.030);
@@ -151,7 +203,7 @@ const FRAGMENT_SHADER = `
       float energy = (strataDensity * 1.30 + eclipseBloom) * diskMask + innerWrap * (1.0 - diskMask);
       vec3 hdrCol = vec3(0.96, 0.98, 1.0) * energy;
       vec3 mapped = 1.0 - exp(-hdrCol * 1.35);
-      vec3 finalDark = mix(diskCol, bgCol, diskMask) + mapped;
+      vec3 finalDark = mix(diskCol, bgCol, diskMask) + mapped + dither;
       gl_FragColor = vec4(clamp(finalDark, 0.0, 1.0), 1.0);
     } else {
       float vig = clamp((r - 0.85) * 0.38, 0.0, 1.0);
@@ -168,7 +220,7 @@ const FRAGMENT_SHADER = `
       float totalInk = clamp(combinedInk * diskMask + inkWrap, 0.0, 0.97);
 
       vec3 inkColor = vec3(0.04, 0.04, 0.05);
-      vec3 shaded = mix(baseCanvas, inkColor, totalInk);
+      vec3 shaded = mix(baseCanvas, inkColor, totalInk) + dither;
 
       gl_FragColor = vec4(clamp(shaded, 0.0, 1.0), 1.0);
     }
@@ -1166,6 +1218,7 @@ class RehoboamCard extends HTMLElement {
     this._uLightMode = gl.getUniformLocation(prog, 'u_light_mode');
     this._uAmpScale = gl.getUniformLocation(prog, 'u_amp_scale');
     this._uRayIntensity = gl.getUniformLocation(prog, 'u_ray_intensity');
+    this._uPxSize = gl.getUniformLocation(prog, 'u_px_size');
   }
 
   _syncUniforms() {
@@ -1213,8 +1266,10 @@ class RehoboamCard extends HTMLElement {
 
       const aspectX = (w * 0.5) / this._ringRadiusPx;
       const aspectY = (h * 0.5) / this._ringRadiusPx;
+      const pxSize = Math.min(0.0045, Math.max(0.0018, 1.15 / Math.max(60.0, this._ringRadiusPx * scale)));
       this._gl.useProgram(this._program);
       this._gl.uniform2f(this._uAspect, aspectX, aspectY);
+      this._gl.uniform1f(this._uPxSize, pxSize);
     }
 
     this._layoutHUD(w, h, this._ringRadiusPx);
@@ -1350,70 +1405,97 @@ class RehoboamCard extends HTMLElement {
       }
     }
 
+    // Precompute per-layer temporal phase indices once per frame (replaces 23,552 Math.sin/cos calls)
+    const sinLut = FAST_SIN_LUT;
+    const ecBoost = 1.0 + 0.65 * ec;
+    const tWarpArr = this._tWarpArr || (this._tWarpArr = new Int32Array(7));
+    const tFreq1Arr = this._tFreq1Arr || (this._tFreq1Arr = new Int32Array(7));
+    const tFreq2Arr = this._tFreq2Arr || (this._tFreq2Arr = new Int32Array(7));
+    const tLobeCosArr = this._tLobeCosArr || (this._tLobeCosArr = new Int32Array(7));
+    const tLobeSinArr = this._tLobeSinArr || (this._tLobeSinArr = new Int32Array(7));
+    const ampScaleArr = this._ampScaleArr || (this._ampScaleArr = new Float32Array(7));
+
+    for (let k = 0; k < 7; k++) {
+      const cfg = LAYER_CONFIG[k];
+      const tLayer = timeSec * cfg.speed + cfg.phase;
+      tWarpArr[k] = Math.round(tLayer * 0.45 * RAD_TO_SIN_IDX);
+      tFreq1Arr[k] = Math.round(tLayer * RAD_TO_SIN_IDX);
+      tFreq2Arr[k] = Math.round(tLayer * 1.15 * RAD_TO_SIN_IDX) - COS_LUT_OFFSET;
+      tLobeCosArr[k] = Math.round((-tLayer * 1.4 + k * 0.9) * RAD_TO_SIN_IDX) + COS_LUT_OFFSET;
+      tLobeSinArr[k] = Math.round(tLayer * 1.1 * RAD_TO_SIN_IDX);
+      ampScaleArr[k] = cfg.baseAmp * ecBoost;
+    }
+
+    const tRay37Idx = Math.round(timeSec * 0.35 * RAD_TO_SIN_IDX);
+    const tRay71Idx = Math.round(timeSec * 0.25 * RAD_TO_SIN_IDX) + COS_LUT_OFFSET;
+
     const data = this._lutData;
     const row1Offset = LUT_SIZE * 4;
     const layerOut = this._layerScratch;
+    const activeCount = activeEntities.length;
 
     for (let i = 0; i < LUT_SIZE; i++) {
-      const a = (i / LUT_SIZE) * TWO_PI;
+      const i4 = i << 2;
+      const i8 = i << 3;
 
       for (let k = 0; k < 7; k++) {
         const cfg = LAYER_CONFIG[k];
-        const tLayer = timeSec * cfg.speed + cfg.phase;
 
-        const phaseWarp = 0.45 * Math.sin(a * 2.0 - tLayer * 0.45);
+        const phaseWarp = 0.45 * sinLut[(i8 - tWarpArr[k]) & SIN_LUT_MASK];
+        const warpIdx = (phaseWarp * RAD_TO_SIN_IDX + 65536.5) | 0;
         const baseWave =
           0.50 +
-          0.30 * Math.sin(a * cfg.freq1 + phaseWarp + tLayer) +
-          0.20 * Math.cos(a * cfg.freq2 - tLayer * 1.15);
-        let val = cfg.baseAmp * (1.0 + 0.65 * ec) * Math.max(0.0, baseWave);
+          0.30 * sinLut[(i4 * cfg.freq1 + warpIdx + tFreq1Arr[k]) & SIN_LUT_MASK] +
+          0.20 * sinLut[(i4 * cfg.freq2 - tFreq2Arr[k]) & SIN_LUT_MASK];
+        let val = ampScaleArr[k] * (baseWave > 0.0 ? baseWave : 0.0);
 
-        for (let s = 0; s < activeEntities.length; s++) {
-          const ent = activeEntities[s];
-          const dVal = ent.currentDivergence;
+        if (activeCount > 0) {
+          const cutoff = cfg.cutoff | 0;
+          const envBase = LAYER_ENV_BASE[k];
+          const envMod = LAYER_ENV_MOD[k];
+          const lobeStep1 = cfg.lobeFreq * RAD_TO_SIN_IDX;
+          const lobeStep2 = lobeStep1 * 1.9;
+          const tCos = tLobeCosArr[k] + 65536.5;
+          const tSin = tLobeSinArr[k] + 65536.5;
 
-          const shiftedCenter = (ent.binCenter + cfg.offsetBins + LUT_SIZE) & LUT_MASK;
-          let signedDiff = i - shiftedCenter;
-          if (signedDiff > (LUT_SIZE >> 1)) signedDiff -= LUT_SIZE;
-          if (signedDiff < -(LUT_SIZE >> 1)) signedDiff += LUT_SIZE;
-          const dBin = Math.abs(signedDiff);
+          for (let s = 0; s < activeCount; s++) {
+            const ent = activeEntities[s];
+            const shiftedCenter = (ent.binCenter + cfg.offsetBins + LUT_SIZE) & LUT_MASK;
+            let signedDiff = i - shiftedCenter;
+            if (signedDiff > (LUT_SIZE >> 1)) signedDiff -= LUT_SIZE;
+            if (signedDiff < -(LUT_SIZE >> 1)) signedDiff += LUT_SIZE;
+            const dBin = signedDiff < 0 ? -signedDiff : signedDiff;
 
-          if (dBin < cfg.cutoff) {
-            // Smooth Raised-Cosine (Hann) Window: C1 continuous with zero derivative at apex (rounded sine wave peak)
-            const hann = 0.5 * (1.0 + Math.cos(Math.PI * (dBin / cfg.cutoff)));
-            const env = Math.pow(hann, cfg.pow);
-
-            const flankWeight = k === 0 ? Math.min(1.0, (dBin / 7.5) ** 2) : 1.0;
-            const subLobes =
-              0.74 +
-              0.16 * Math.cos(signedDiff * cfg.lobeFreq - tLayer * 1.4 + k * 0.9) +
-              0.10 * Math.sin(signedDiff * (cfg.lobeFreq * 1.9) + tLayer * 1.1);
-            const waveMod = (1.0 - flankWeight) + flankWeight * subLobes;
-
-            const layerWavePeak = dVal * cfg.height * env * waveMod;
-            if (layerWavePeak > val) val = layerWavePeak;
+            if (dBin < cutoff) {
+              const idxCos = (signedDiff * lobeStep1 + tCos) & SIN_LUT_MASK;
+              const idxSin = (signedDiff * lobeStep2 + tSin) & SIN_LUT_MASK;
+              const osc = 0.16 * sinLut[idxCos] + 0.10 * sinLut[idxSin];
+              const layerWavePeak = ent.currentDivergence * (envBase[dBin] + envMod[dBin] * osc);
+              if (layerWavePeak > val) val = layerWavePeak;
+            }
           }
         }
 
-        layerOut[k] = Math.min(1.0, Math.max(0.0, val));
+        layerOut[k] = val > 1.0 ? 1.0 : (val < 0.0 ? 0.0 : val);
       }
 
       const rayShimmer =
         0.78 * this._rayBaseHash[i] +
-        0.13 * Math.sin(a * 37.0 - timeSec * 0.35) +
-        0.09 * Math.cos(a * 71.0 + timeSec * 0.25);
+        0.13 * sinLut[(i * 148 - tRay37Idx) & SIN_LUT_MASK] +
+        0.09 * sinLut[(i * 284 + tRay71Idx) & SIN_LUT_MASK];
 
-      const idx0 = i * 4;
-      data[idx0]     = (layerOut[0] * 255) | 0;
-      data[idx0 + 1] = (layerOut[1] * 255) | 0;
-      data[idx0 + 2] = (layerOut[2] * 255) | 0;
-      data[idx0 + 3] = (layerOut[3] * 255) | 0;
+      // Non-linear sqrt encoding gives ~8x more 8-bit resolution for subtle baseline waves
+      const idx0 = i4;
+      data[idx0]     = (Math.sqrt(layerOut[0]) * 255.0 + 0.5) | 0;
+      data[idx0 + 1] = (Math.sqrt(layerOut[1]) * 255.0 + 0.5) | 0;
+      data[idx0 + 2] = (Math.sqrt(layerOut[2]) * 255.0 + 0.5) | 0;
+      data[idx0 + 3] = (Math.sqrt(layerOut[3]) * 255.0 + 0.5) | 0;
 
       const idx1 = row1Offset + idx0;
-      data[idx1]     = (layerOut[4] * 255) | 0;
-      data[idx1 + 1] = (layerOut[5] * 255) | 0;
-      data[idx1 + 2] = (layerOut[6] * 255) | 0;
-      data[idx1 + 3] = (Math.max(0, Math.min(1, rayShimmer)) * 255) | 0;
+      data[idx1]     = (Math.sqrt(layerOut[4]) * 255.0 + 0.5) | 0;
+      data[idx1 + 1] = (Math.sqrt(layerOut[5]) * 255.0 + 0.5) | 0;
+      data[idx1 + 2] = (Math.sqrt(layerOut[6]) * 255.0 + 0.5) | 0;
+      data[idx1 + 3] = (Math.max(0.0, Math.min(1.0, rayShimmer)) * 255.0 + 0.5) | 0;
     }
   }
 
