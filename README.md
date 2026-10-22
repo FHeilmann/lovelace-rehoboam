@@ -1,53 +1,152 @@
-# Rehoboam Divergence Card for Home Assistant
+<div align="center">
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/default)
-[![HACS Validation](https://github.com/FHeilmann/lovelace-rehoboam/actions/workflows/validate.yml/badge.svg)](https://github.com/FHeilmann/lovelace-rehoboam/actions/workflows/validate.yml)
-[![GitHub Release](https://img.shields.io/github/v/release/FHeilmann/lovelace-rehoboam?style=for-the-badge)](https://github.com/FHeilmann/lovelace-rehoboam/releases)
+<img src="images/hero.webp" alt="The Rehoboam card: a dark ring with an eclipse glow, peaks rising where sensors diverge, and labelled callouts" width="100%">
 
-A WebGL custom Lovelace card inspired by the **Westworld Rehoboam** AI system. It shows the state of your home as divergence waves around a central eclipse. Each entity pushes up a peak on the ring as it moves from its baseline toward its critical value, and a callout labels it.
+# Rehoboam
 
-**[Try it in the playground](https://fheilmann.github.io/lovelace-rehoboam/)**: change every setting, simulate sensor values and copy the YAML config for your dashboard, without Home Assistant.
+**A living divergence ring for your Home Assistant dashboard, after the Rehoboam AI in Westworld.**
+
+[![HACS](https://img.shields.io/badge/HACS-Custom-41BDF5?style=for-the-badge)](https://hacs.xyz)
+[![Release](https://img.shields.io/github/v/release/FHeilmann/lovelace-rehoboam?style=for-the-badge)](https://github.com/FHeilmann/lovelace-rehoboam/releases)
+[![Validation](https://img.shields.io/github/actions/workflow/status/FHeilmann/lovelace-rehoboam/validate.yml?branch=main&style=for-the-badge&label=validation)](https://github.com/FHeilmann/lovelace-rehoboam/actions/workflows/validate.yml)
+[![License](https://img.shields.io/github/license/FHeilmann/lovelace-rehoboam?style=for-the-badge)](LICENSE)
+
+[**Try the playground**](https://fheilmann.github.io/lovelace-rehoboam/) · [Install](#installation) · [Quick start](#quick-start) · [All options](#configuration-options)
+
+</div>
 
 ---
 
-## Features
+Every entity you add gets its own place on the ring. While its value stays near its baseline, the ring is calm. When the value moves toward critical, strata build up into a peak, the eclipse turns toward it, and a callout draws out to name it. Small ambient strata rise and fall in the calm parts, so the ring never looks frozen.
 
-- **Layered wave strata**: 7 layers of strata with crisp, anti-aliased edges and rim lines. A diverging entity builds up a gradual mountain with one peak. Fold shadows and concentric rings that wobble in and out give the strata depth.
-- **Ambient strata**: small strata rise and fall at random places in the calm parts of the ring, so the ring never looks frozen.
-- **Eclipse that follows**: the eclipse corona turns toward the entity with the most divergence, or stays at a fixed angle.
-- **Callouts with three states**: hidden, monitoring and divergence, each with its own threshold. The leader line draws out from the marker, and the label fades in when the line turns its corner. Labels stack so they do not overlap, and they stay inside the card edges as far as possible.
-- **Title and live subtitle**: an optional title and subtitle in the top left corner. The subtitle accepts Home Assistant templates and updates when the result changes.
-- **Tap and hold actions**: the centre of the ring and each callout take the standard Home Assistant actions (`more-info`, `toggle`, `navigate`, `url`, `perform-action`, `fire-dom-event`, for example a browser_mod popup).
-- **Directional baseline-to-critical mapping**: both high-is-bad (CPU temperature) and low-is-bad (battery, free disk space) sensors work.
-- **Visual editor**: entity pickers, action pickers, a slider and a number box for each ranged setting, a tooltip on each setting, and collapsible entity sections.
-- **Localized**: the callouts, the visual editor (labels and tooltips) and the playground come in English, German, French, Spanish, Dutch and Italian. Values use the number and state format of Home Assistant.
-- **Dark, light and auto themes**: `auto` follows the dark mode setting of Home Assistant.
-- **Made for low-end tablets**: the card renders at a reduced resolution, uses a low frame rate when the ring is calm, and pauses when it is off screen or in a background tab. The per-frame CPU work stays well below 1 ms on a desktop for 5 entities.
-- **No build step**: a single native Web Component file with no dependencies. The default label font (Barlow Condensed) loads from Google Fonts. Set `font_family` to a local font to make the card fully offline.
+## Highlights
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**Made to look like the show**
+- 7 layers of strata with crisp edges, fold shadows and slowly wobbling shading rings
+- An eclipse glow that follows the entity with the most divergence
+- Callouts that draw their leader line, then fade in their label
+- Dark, light and auto themes
+
+</td>
+<td width="50%" valign="top">
+
+**Made for Home Assistant**
+- Visual editor with sliders, tooltips and entity and action pickers
+- Tap and hold actions on the centre and on each callout, browser_mod popups included
+- A title with a live template subtitle
+- Six languages, with Home Assistant's own number and state format
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+**Clear states**
+- Hidden, monitoring and divergence, each with its own threshold
+- Works for high-is-bad and low-is-bad sensors
+- State maps for text states such as `home` and `not_home`
+
+</td>
+<td width="50%" valign="top">
+
+**Light on old tablets**
+- Lower render resolution and frame rate while the ring is calm
+- Pauses when it is off screen or in a background tab
+- One file, no dependencies, no build step
+
+</td>
+</tr>
+</table>
+
+## Gallery
+
+<table>
+<tr>
+<td width="50%"><img src="images/hero-dark.png" alt="The card in the dark theme"></td>
+<td width="50%"><img src="images/light.png" alt="The card in the light theme"></td>
+</tr>
+<tr>
+<td align="center"><b>Dark</b> (night eclipse)</td>
+<td align="center"><b>Light</b> (ink on paper)</td>
+</tr>
+<tr>
+<td width="50%"><img src="images/german.png" alt="The card with German callouts and German number format"></td>
+<td width="50%"><img src="images/playground.png" alt="The playground: the card with its settings panel"></td>
+</tr>
+<tr>
+<td align="center"><b>Localized</b>: German callouts and number format</td>
+<td align="center"><b><a href="https://fheilmann.github.io/lovelace-rehoboam/">Playground</a></b>: try every setting, then copy the YAML</td>
+</tr>
+</table>
+
+<details>
+<summary><b>The visual editor</b></summary>
+<br>
+<table>
+<tr>
+<td width="50%" valign="top"><img src="images/editor.png" alt="The visual editor: sections with sliders, number boxes and tooltips"></td>
+<td width="50%" valign="top"><img src="images/editor-entity.png" alt="An entity in the visual editor, with a state map"></td>
+</tr>
+<tr>
+<td align="center">Sections with a slider, a number box and a tooltip for each setting</td>
+<td align="center">Each entity in four groups, here with a state map</td>
+</tr>
+</table>
+</details>
+
+## Quick start
+
+1. Install the card with HACS (see [Installation](#installation)).
+2. Add a manual card to a dashboard and paste:
+
+```yaml
+type: custom:lovelace-rehoboam
+title: Home
+subtitle: "{{ states('sensor.outside_temperature') }} °C outside"
+entities:
+  - entity: sensor.living_room_temperature
+    category: THERMAL VARIANCE
+    baseline: 21
+    critical: 30
+  - entity: sensor.living_room_humidity
+    category: HUMIDITY
+    baseline: 45
+    critical: 80
+  - entity: sensor.phone_battery
+    category: BATTERY
+    baseline: 100
+    critical: 15
+```
+
+3. Open the visual editor to fine-tune it, or build the whole config in the [playground](https://fheilmann.github.io/lovelace-rehoboam/) and paste it.
 
 ---
 
 ## Installation
 
-### Method 1: Via HACS (Recommended)
+### HACS (recommended)
 
-1. Make sure [HACS](https://hacs.xyz/) is installed in your Home Assistant instance.
-2. In Home Assistant, open **HACS** > **Frontend**.
-3. Click the three dots in the top right corner and select **Custom repositories**.
-4. Enter repository URL: `https://github.com/FHeilmann/lovelace-rehoboam`
-5. Select Category: **Dashboard** (or **Lovelace**).
-6. Click **Add**, then find **Rehoboam Card** and click **Download**.
-7. Refresh your browser cache.
+[![Open your Home Assistant instance and open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=FHeilmann&repository=lovelace-rehoboam&category=plugin)
 
-### Method 2: Manual Installation
+Click the button above, or add the repository by hand:
+
+1. Open **HACS** in Home Assistant.
+2. Open the menu (three dots, top right) and select **Custom repositories**.
+3. Enter `https://github.com/FHeilmann/lovelace-rehoboam`, select the type **Dashboard**, and click **Add**.
+4. Search for **Rehoboam Card**, open it and click **Download**.
+5. Reload the browser page.
+
+### Manual
 
 1. Download `lovelace-rehoboam.js` from the [latest release](https://github.com/FHeilmann/lovelace-rehoboam/releases).
-2. Copy `lovelace-rehoboam.js` into your Home Assistant directory: `<config>/www/lovelace-rehoboam.js`.
-3. In Home Assistant, go to **Settings** > **Dashboards** > **Resources** (top right three dots).
-4. Click **Add Resource**:
-   - URL: `/local/lovelace-rehoboam.js`
-   - Resource type: **JavaScript Module**
-5. Refresh your browser.
+2. Copy it to `<config>/www/lovelace-rehoboam.js`.
+3. Go to **Settings** > **Dashboards**, open the menu (three dots, top right) and select **Resources**.
+4. Add the resource `/local/lovelace-rehoboam.js` with the type **JavaScript module**.
+5. Reload the browser page.
 
 ---
 
@@ -240,6 +339,8 @@ python3 -m http.server 8766 --bind 127.0.0.1
 ```
 
 Then open `http://127.0.0.1:8766/harness.html`. URL options for testing: `grid=1` shows the 4 theme and eclipse presets side by side, `one=0` to `one=3` shows one preset, `panel=0` hides the settings panel, and `v=<name>` loads `<name>.js` instead of the card.
+
+The README images come from the playground. With the server running, `node scripts/screenshots.mjs <tmp dir>` captures them with headless Chromium, and `python3 scripts/build-images.py <tmp dir> images` turns them into `images/hero.webp` and the PNGs (needs Pillow).
 
 ---
 
