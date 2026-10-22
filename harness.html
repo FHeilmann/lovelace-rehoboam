@@ -1,116 +1,198 @@
-<!doctype html><html><head><meta charset="utf-8"><title>Rehoboam Test Bench</title><style>
-body{margin:0;background:#444;font:12px/1.35 system-ui,sans-serif;color:#ddd}
-.grid{display:grid;grid-template-columns:640px 640px}
-.grid .cell{width:640px;height:353px;overflow:hidden}
-.single .cell{display:none}
-.single .cell.sel{display:block;width:calc(100vw - 300px);height:100vh;overflow:hidden}
-body.nopanel .single .cell.sel{width:100vw}
-#panel{position:fixed;top:0;right:0;width:300px;height:100vh;overflow-y:auto;box-sizing:border-box;padding:10px 12px;background:#1c1c22;border-left:1px solid #333}
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rehoboam Card Playground</title>
+<meta name="description" content="Try the Rehoboam Lovelace card in the browser and generate a YAML config for it.">
+<style>
+:root{--bg:#0d0d11;--panel:#18181e;--line:#2c2c35;--text:#dcdce2;--muted:#9696a2;--accent:#7fb8ff;--field:#0f0f14;--on:#3d6fb0}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);font:13px/1.4 system-ui,-apple-system,sans-serif;color:var(--text);display:flex;flex-direction:column}
+a{color:var(--accent)}
+header{display:flex;align-items:center;gap:10px 14px;padding:8px 14px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+header h1{margin:0;font-size:14px;font-weight:600;letter-spacing:2px;text-transform:uppercase}
+header .ver{color:var(--muted);font-variant-numeric:tabular-nums}
+header nav{margin-left:auto;display:flex;gap:14px}
+header button{padding:3px 9px;border:1px solid var(--line);background:transparent;color:var(--text);border-radius:4px;cursor:pointer}
+main{flex:1;display:flex;min-height:0}
+#cells{flex:1;min-width:0;position:relative;overflow:hidden}
+#cells.single .cell{display:none}
+#cells.single .cell.sel{display:block;width:100%;height:100%}
+#cells.grid{display:grid;grid-template-columns:640px 640px;overflow:auto}
+#cells.grid .cell{width:640px;height:353px;overflow:hidden}
+#panel{width:350px;flex:none;overflow-y:auto;padding:4px 14px 14px;background:var(--panel);border-left:1px solid var(--line)}
 body.nopanel #panel{display:none}
-#panel h3{margin:14px 0 6px;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#7fb8ff}
-#panel h3:first-child{margin-top:0}
-.row{display:grid;grid-template-columns:1fr 52px;gap:2px 6px;align-items:center;margin:4px 0}
-.row label{grid-column:1/3;color:#aaa}
-.row input[type=range]{width:100%}
-.row output{text-align:right;font-variant-numeric:tabular-nums;color:#fff}
-.row input[type=text]{grid-column:1/3;padding:4px 6px;background:#111;border:1px solid #444;color:#ddd;border-radius:4px}
-.check{display:flex;gap:6px;align-items:center;margin:6px 0}
-.seg{display:flex;gap:4px;margin:4px 0}
-.seg button,.btn{flex:1;padding:5px;border:1px solid #555;background:#2a2a32;color:#ddd;border-radius:4px;cursor:pointer}
-.seg button.on{background:#3d6fb0;border-color:#5a8fd8;color:#fff}
-details{margin:6px 0;padding:4px 8px;border:1px solid #333;border-radius:4px;background:#22222a}
-summary{cursor:pointer;color:#ccc}
-.stats{white-space:pre;margin-top:12px;padding:6px;background:#111;border-radius:4px;font-family:monospace;color:#9f9}
-#toggle{position:fixed;top:6px;right:306px;z-index:2;padding:3px 8px;border:1px solid #555;background:#1c1c22;color:#ddd;border-radius:4px;cursor:pointer}
-body.nopanel #toggle{right:6px}
-</style></head><body>
-<button id="toggle">panel</button>
-<div id="cells"><div class="cell" id="c0"></div><div class="cell" id="c1"></div><div class="cell" id="c2"></div><div class="cell" id="c3"></div></div>
-<div id="panel"></div>
-<script>
-// Test bench for the Rehoboam card without Home Assistant. Serve this folder over HTTP
-// (for example `python3 -m http.server`) and open harness.html.
-// URL options: v=<script name without .js>, one=0..3 (preset), grid=1 (4-up), ring, rs, cfg=<JSON>, panel=0
-const q = new URLSearchParams(location.search);
-const v = q.get('v') || 'lovelace-rehoboam';
-const grid = q.get('grid') === '1';
-const one = grid ? null : (q.get('one') ?? '0');
-const urlCfg = JSON.parse(q.get('cfg') || '{}');
-if (q.get('panel') === '0') document.body.classList.add('nopanel');
-document.getElementById('toggle').onclick = () => { document.body.classList.toggle('nopanel'); cards.forEach(c => c && c._onResize()); };
-
-// Test sensors. `div` is the panel's divergence slider (0-1 of baseline -> critical); `own` turns the
-// entity's own thresholds on or off.
-const ENTS = [
-  {entity:'sensor.pm25', name:'PM2.5', category:'AIRQUALITY', baseline:5, critical:60, angle:180, unit:'PM2.5', div:0.85, own:true, monitoring_threshold:15, divergence_threshold:35, always_visible:false},
-  {entity:'sensor.temp', name:'Temperature', category:'TEMPERATURE', baseline:20, critical:35, angle:50, unit:'°C', div:0.53, own:false, monitoring_threshold:24, divergence_threshold:30, always_visible:false},
-  {entity:'sensor.hum', name:'Humidity', category:'HUMIDITY', baseline:40, critical:80, angle:20, unit:'%', div:0.45, own:false, monitoring_threshold:50, divergence_threshold:65, always_visible:false},
-  {entity:'sensor.commute', name:'Commute', category:'COMMUTE', baseline:20, critical:90, angle:335, unit:'min', div:0.36, own:true, monitoring_threshold:40, divergence_threshold:60, always_visible:true},
-  {entity:'sensor.batt', name:'Battery', category:'BATTERY', baseline:100, critical:20, angle:205, unit:'%', div:0.50, own:false, monitoring_threshold:60, divergence_threshold:40, always_visible:false},
-];
-const PRESETS = [
-  {theme_mode:'dark', test_divergence:0},
-  {theme_mode:'light', test_divergence:0},
-  {theme_mode:'dark', test_divergence:1, eclipse_angle:180},
-  {theme_mode:'light', test_divergence:1, eclipse_angle:180},
-];
-
-// Card options the panel edits. Keys starting with '_' belong to the test page only.
-// In grid mode theme and eclipse stay per cell.
-const state = {
-  theme_mode: 'dark', _ha_dark: true,
-  _eclipse_follow: true, eclipse_angle: 180, _eclipse_override: false, test_divergence: 1,
-  eclipse_intensity: 1.0, ray_intensity: 0.35,
-  amplitude_scale: 1.25, peak_width: 1.0, peak_sharpness: 0, peak_height: 1.0, strata_width: 1.0, baseline_height: 1.0,
-  facet_shading: 0.6, ring_shading: true,
-  ambient_count: 3, ambient_size: 0.3, ambient_width: 1.0, ambient_lifetime: 25,
-  divergence_threshold: 0.15, _monitoring_on: false, monitoring_threshold: 0.1, transition_tau: 0.6,
-  font_family: '', font_size: 13, height: '',
-  ring_scale: Number(q.get('ring') || 0.6), resolution_scale: Number(q.get('rs') || 0.65), fps_idle: 24, fps_active: 45,
-  hold_time: 500,
-  // Demo actions: the test page has no Home Assistant, so it only logs the 'hass-action' events
-  center_tap_action: { action: 'fire-dom-event', browser_mod: { service: 'browser_mod.popup', data: { title: 'Rehoboam' } } },
-  center_hold_action: { action: 'more-info' },
-  center_entity: 'sensor.pm25',
-  ...urlCfg,
-};
-if (one !== null) {
-  const p = PRESETS[Number(one)] || PRESETS[0];
-  state.theme_mode = p.theme_mode;
-  // Presets pin the eclipse (0 or 1); untick the override to see the live eclipse from the sensors
-  state._eclipse_override = true; state.test_divergence = p.test_divergence;
+#panel h3{margin:18px 0 6px;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--accent)}
+.intro{margin:10px 0 0;color:var(--muted)}
+.row{margin:8px 0}
+.row>label,.check{display:flex;align-items:center;color:var(--muted)}
+.ctl{display:flex;gap:8px;align-items:center;margin-top:3px}
+.ctl input[type=range]{flex:1;min-width:0;accent-color:var(--accent)}
+.row.unset input[type=range]{opacity:.4}
+input[type=number],input[type=text],select{padding:4px 6px;background:var(--field);border:1px solid var(--line);color:var(--text);border-radius:4px;font:inherit;min-width:0}
+.ctl input[type=number]{width:78px;flex:none}
+.row>input[type=text],.row>select,.row>.ctl>select{width:100%}
+.ctl select{flex:1}
+.ctl input[type=text]{flex:1.4}
+.check{gap:6px;margin:8px 0;cursor:pointer}
+.seg{display:flex;gap:4px;margin:6px 0}
+.seg button,.btn{flex:1;padding:5px;border:1px solid var(--line);background:#25252d;color:var(--text);border-radius:4px;cursor:pointer;font:inherit}
+.seg button.on,.btn.primary{background:var(--on);border-color:#5a8fd8;color:#fff}
+.btn.danger{flex:none;color:#ff8a80;border-color:#5a3030;background:transparent}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+details.ent{margin:8px 0;padding:2px 10px 6px;border:1px solid var(--line);border-radius:6px;background:#1e1e25}
+details.ent>summary{cursor:pointer;padding:6px 0;display:flex;gap:8px;align-items:center}
+details.ent>summary span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row,.check{position:relative}
+.tip{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:6px;border-radius:50%;border:1px solid currentColor;font:italic 600 10px/1 Georgia,serif;cursor:help;flex:none;outline:none}
+.tip:hover,.tip:focus{color:var(--accent)}
+.tip:hover::after,.tip:focus::after{content:attr(data-tip);position:absolute;left:0;right:0;top:22px;z-index:20;padding:8px 10px;border-radius:6px;background:#2a2a33;color:var(--text);border:1px solid #3a3a46;box-shadow:0 4px 14px rgba(0,0,0,.45);font:400 12px/1.4 system-ui,sans-serif;white-space:normal;pointer-events:none}
+#yaml{margin:6px 0;padding:8px;max-height:320px;overflow:auto;background:var(--field);border:1px solid var(--line);border-radius:4px;font:12px/1.45 ui-monospace,monospace;white-space:pre;color:#cfe3ff}
+.actions{position:sticky;bottom:-14px;display:flex;gap:6px;padding:10px 0;background:var(--panel)}
+.stats{white-space:pre;padding:6px;background:var(--field);border-radius:4px;font:11px ui-monospace,monospace;color:#9f9}
+#toast{position:fixed;left:14px;bottom:14px;z-index:30;max-width:min(420px,calc(100vw - 28px));padding:8px 12px;border-radius:6px;background:#2a2a33;border:1px solid #3a3a46;opacity:0;transition:opacity .25s;pointer-events:none}
+#toast.show{opacity:1}
+@media (max-width:820px){
+  body{height:auto;display:block}
+  main{display:block}
+  #cells.single .cell.sel{height:min(100vw,72vh)}
+  #cells{height:auto}
+  #panel{width:auto;border-left:none;border-top:1px solid var(--line);overflow:visible;padding:4px 16px 16px}
+  .actions{bottom:0}
+  header nav{margin-left:0}
 }
-if ('test_divergence' in urlCfg) state._eclipse_override = true;
-if ('eclipse_angle' in urlCfg) state._eclipse_follow = false;
-if ('monitoring_threshold' in urlCfg) state._monitoring_on = true;
+</style>
+</head><body>
+<header>
+  <h1>Rehoboam Card</h1><span class="ver" id="ver"></span>
+  <nav>
+    <a href="https://github.com/FHeilmann/lovelace-rehoboam">GitHub</a>
+    <a href="https://github.com/FHeilmann/lovelace-rehoboam#installation">Install</a>
+    <button id="toggle" type="button">Hide panel</button>
+  </nav>
+</header>
+<main>
+  <div id="cells"><div class="cell" id="c0"></div><div class="cell" id="c1"></div><div class="cell" id="c2"></div><div class="cell" id="c3"></div></div>
+  <aside id="panel"></aside>
+</main>
+<div id="toast" role="status"></div>
+<script>
+// Playground for the Rehoboam card without Home Assistant: change the settings, simulate sensor
+// values, and copy the YAML config. Locally: serve this folder over HTTP (python3 -m http.server)
+// and open harness.html.
+// URL options: #cfg=<base64 JSON> (share link), v=<script name without .js>, grid=1 (4 presets),
+// one=0..3 (preset), panel=0
+const q = new URLSearchParams(location.search);
+const scriptName = q.get('v') || 'lovelace-rehoboam';
+const grid = q.get('grid') === '1';
+const one = grid ? null : q.get('one');
+if (q.get('panel') === '0') document.body.classList.add('nopanel');
 
-function cardConfig(i) {
-  const c = {};
-  for (const [k, val] of Object.entries(state)) if (!k.startsWith('_')) c[k] = val;
-  c.entities = ENTS.map(e => {
-    const out = { entity: e.entity, name: e.name, category: e.category, baseline: e.baseline, critical: e.critical, angle: e.angle, unit: e.unit, always_visible: e.always_visible };
-    if (e.own) { out.monitoring_threshold = e.monitoring_threshold; out.divergence_threshold = e.divergence_threshold; }
-    return out;
+const PRESETS = [
+  { theme_mode: 'dark', test_divergence: 0 },
+  { theme_mode: 'light', test_divergence: 0 },
+  { theme_mode: 'dark', test_divergence: 1, eclipse_angle: 180 },
+  { theme_mode: 'light', test_divergence: 1, eclipse_angle: 180 },
+];
+// Card options this page edits, in YAML order. Entity options, in YAML order.
+const CARD_KEYS = ['theme_mode', 'height', 'font_family', 'font_size', 'eclipse_angle', 'eclipse_intensity', 'ray_intensity',
+  'facet_shading', 'ring_shading', 'amplitude_scale', 'peak_width', 'peak_sharpness', 'peak_height', 'strata_width',
+  'baseline_height', 'ambient_count', 'ambient_size', 'ambient_width', 'ambient_lifetime', 'transition_tau',
+  'monitoring_threshold', 'divergence_threshold', 'test_divergence', 'ring_scale', 'resolution_scale', 'fps_idle',
+  'fps_active', 'center_entity', 'hold_time', 'center_tap_action', 'center_hold_action'];
+const ENT_KEYS = ['entity', 'name', 'category', 'baseline', 'critical', 'unit', 'angle', 'monitoring_threshold',
+  'divergence_threshold', 'always_visible', 'tap_action', 'hold_action'];
+// Example sensors. `_div` is the simulated value (0 = baseline, 1 = critical); it never goes into the YAML.
+const DEMO_ENTS = [
+  { entity: 'sensor.pm25', name: 'PM2.5', category: 'AIR QUALITY', baseline: 5, critical: 60, unit: 'µg/m³', angle: 180, monitoring_threshold: 15, divergence_threshold: 35, _div: 0.85 },
+  { entity: 'sensor.temperature', name: 'Temperature', category: 'THERMAL VARIANCE', baseline: 20, critical: 35, unit: '°C', angle: 50, _div: 0.53 },
+  { entity: 'sensor.humidity', name: 'Humidity', category: 'HUMIDITY', baseline: 40, critical: 80, unit: '%', angle: 20, _div: 0.45 },
+  { entity: 'sensor.commute', name: 'Commute', category: 'COMMUTE', baseline: 20, critical: 90, unit: 'min', angle: 335, monitoring_threshold: 40, divergence_threshold: 60, always_visible: true, _div: 0.36 },
+  { entity: 'sensor.battery', name: 'Battery', category: 'BATTERY', baseline: 100, critical: 20, unit: '%', angle: 205, _div: 0.5 },
+];
+
+let TIPS = {}, DEFAULTS = {}, state = {}, ENTS = [], cards = [];
+const isSet = v => v !== null && v !== undefined && v !== '';
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+const roundTo = (v, step) => { const d = Math.max(0, -Math.floor(Math.log10(step))); return Number(v.toFixed(Math.min(d, 10))); };
+
+// ---- share link (#cfg=base64url JSON) ----
+function encodeCfg(obj) {
+  return btoa(unescape(encodeURIComponent(JSON.stringify(obj)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function decodeCfg(text) {
+  try {
+    const b = text.replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(decodeURIComponent(escape(atob(b + '='.repeat((4 - b.length % 4) % 4)))));
+  } catch (err) { return null; }
+}
+function loadShared() {
+  const m = location.hash.match(/cfg=([^&]+)/);
+  if (m) return decodeCfg(m[1]);
+  try { return q.get('cfg') ? JSON.parse(q.get('cfg')) : null; } catch (err) { return null; }
+}
+
+// ---- YAML ----
+function yScalar(v) {
+  if (v === null || v === undefined) return 'null';
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+  const s = String(v);
+  const plain = /^[A-Za-z_][^\n"'#\\]*$/.test(s) && !/: |:$|\s$/.test(s) && !/^(true|false|null|yes|no|on|off|y|n)$/i.test(s);
+  return plain ? s : JSON.stringify(s);
+}
+const isObj = v => v && typeof v === 'object' && !Array.isArray(v);
+function toYaml(v, ind = '') {
+  if (Array.isArray(v)) {
+    return v.map(item => (isObj(item) && Object.keys(item).length
+      ? ind + '- ' + toYaml(item, ind + '  ').slice(ind.length + 2)
+      : ind + '- ' + yScalar(item))).join('\n');
+  }
+  return Object.entries(v).map(([k, val]) => {
+    const nested = (isObj(val) && Object.keys(val).length) || (Array.isArray(val) && val.length);
+    if (nested) return `${ind}${yScalar(k)}:\n${toYaml(val, ind + '  ')}`;
+    return `${ind}${yScalar(k)}: ${isObj(val) ? '{}' : Array.isArray(val) ? '[]' : yScalar(val)}`;
+  }).join('\n');
+}
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+// The config a user copies: card defaults and empty fields left out
+function exportConfig() {
+  const out = { type: 'custom:lovelace-rehoboam' };
+  CARD_KEYS.forEach(k => {
+    const v = state[k];
+    if (!isSet(v) || (k in DEFAULTS && same(v, DEFAULTS[k]))) return;
+    out[k] = v;
   });
-  if (state._eclipse_follow) delete c.eclipse_angle;
-  if (!state._eclipse_override) delete c.test_divergence;
-  if (!state._monitoring_on) delete c.monitoring_threshold;
-  if (!c.font_family) delete c.font_family;
+  out.entities = ENTS.map(e => {
+    const o = {};
+    ENT_KEYS.forEach(k => { if ((isSet(e[k]) && !(k === 'always_visible' && !e[k])) || k === 'entity') o[k] = e[k] ?? ''; });
+    return o;
+  });
+  return out;
+}
+
+// ---- preview cards and fake Home Assistant ----
+function cardConfig(i) {
+  const c = { ...exportConfig() };
   if (grid) Object.assign(c, PRESETS[i]);
-  c.height = grid ? '353px' : (c.height || '100vh');
+  else if (one !== null) Object.assign(c, PRESETS[Number(one)] || {});
+  c.height = grid ? '353px' : '100%';
   return c;
 }
 function hassStates() {
   const states = {};
   ENTS.forEach(e => {
-    const val = e.baseline + e.div * (e.critical - e.baseline);
-    states[e.entity] = { state: val.toFixed(1), attributes: { unit_of_measurement: e.unit, friendly_name: e.name } };
+    if (!e.entity) return;
+    const base = isSet(e.baseline) ? Number(e.baseline) : 0;
+    const crit = isSet(e.critical) ? Number(e.critical) : 100;
+    const val = base + e._div * (crit - base);
+    states[e.entity] = { state: String(roundTo(val, 0.1)), attributes: { unit_of_measurement: e.unit || '', friendly_name: e.name || e.entity } };
   });
   return { states, themes: { darkMode: state._ha_dark } };
 }
-
 let pending = false;
 function apply() {
+  renderYaml();
   if (pending) return;
   pending = true;
   requestAnimationFrame(() => {
@@ -120,155 +202,360 @@ function apply() {
 }
 function pushStates() { cards.forEach(c => c && (c.hass = hassStates())); }
 
-// ---- panel helpers (each takes an optional parent element and target object) ----
-const panel = document.getElementById('panel');
-function h(t) { const e = document.createElement('h3'); e.textContent = t; panel.appendChild(e); }
-function slider(label, key, min, max, step, { obj = state, onChange = apply, parent = panel } = {}) {
-  const row = document.createElement('div'); row.className = 'row';
-  row.innerHTML = `<label>${label}</label><input type="range" min="${min}" max="${max}" step="${step}"><output></output>`;
-  const inp = row.querySelector('input'), out = row.querySelector('output');
-  const show = () => { out.textContent = (+obj[key]).toFixed(step < 1 ? 2 : 0); };
-  inp.value = obj[key]; show();
-  inp.oninput = () => { obj[key] = Number(inp.value); show(); onChange(); };
-  row.sync = () => { inp.value = obj[key]; show(); };
+// ---- controls ----
+function infoIcon(text) {
+  if (!text) return null;
+  const t = el('span', 'tip', 'i');
+  t.tabIndex = 0;
+  t.dataset.tip = text;
+  t.setAttribute('role', 'note');
+  t.setAttribute('aria-label', text);
+  return t;
+}
+function labelEl(text, tip) {
+  const l = el('label', '', text);
+  const t = infoIcon(tip);
+  if (t) l.appendChild(t);
+  return l;
+}
+function heading(parent, text) { parent.appendChild(el('h3', '', text)); }
+// Slider and number box for one option. With nullable, an empty box means "not set".
+function num(parent, label, key, min, max, step, { obj = state, nullable = false, unsetAt = min, placeholder = '', onChange = apply, tip = TIPS[key] } = {}) {
+  const row = el('div', 'row');
+  row.appendChild(labelEl(label, tip));
+  const ctl = el('div', 'ctl');
+  const rng = el('input'); rng.type = 'range';
+  const box = el('input'); box.type = 'number'; box.placeholder = placeholder;
+  rng.setAttribute('aria-label', label); box.setAttribute('aria-label', label);
+  ctl.append(rng, box); row.appendChild(ctl);
+  const setBounds = (lo, hi, st) => { [rng, box].forEach(i => { i.min = lo; i.max = hi; i.step = st; }); step = st; };
+  const sync = () => {
+    const v = obj[key];
+    rng.value = isSet(v) ? v : unsetAt;
+    box.value = isSet(v) ? v : '';
+    row.classList.toggle('unset', !isSet(v));
+  };
+  setBounds(min, max, step);
+  rng.oninput = () => { obj[key] = roundTo(Number(rng.value), step); sync(); onChange(); };
+  box.onchange = () => {
+    if (box.value === '') { if (nullable) obj[key] = null; } else if (Number.isFinite(Number(box.value))) obj[key] = Number(box.value);
+    sync(); onChange();
+  };
+  sync();
+  row.sync = sync;
+  row.setBounds = (lo, hi, st, at) => { setBounds(lo, hi, st); unsetAt = at; sync(); };
   parent.appendChild(row);
   return row;
 }
-function check(label, key, { obj = state, onChange = apply, parent = panel } = {}) {
-  const row = document.createElement('label'); row.className = 'check';
-  row.innerHTML = `<input type="checkbox"> ${label}`;
-  const inp = row.querySelector('input'); inp.checked = !!obj[key];
+function check(parent, label, key, { obj = state, onChange = apply, tip = TIPS[key] } = {}) {
+  const row = el('label', 'check');
+  const inp = el('input'); inp.type = 'checkbox'; inp.checked = !!obj[key];
   inp.onchange = () => { obj[key] = inp.checked; onChange(); };
+  row.append(inp, document.createTextNode(label));
+  const t = infoIcon(tip); if (t) row.appendChild(t);
   parent.appendChild(row);
 }
-function text(label, key, placeholder, { obj = state, parent = panel } = {}) {
-  const row = document.createElement('div'); row.className = 'row';
-  row.innerHTML = `<label>${label}</label><input type="text" placeholder="${placeholder}">`;
-  const inp = row.querySelector('input'); inp.value = obj[key] || '';
-  inp.onchange = () => { obj[key] = inp.value.trim(); apply(); };
+function text(parent, label, key, placeholder, { obj = state, onChange = apply, tip = TIPS[key], live = false } = {}) {
+  const row = el('div', 'row');
+  row.appendChild(labelEl(label, tip));
+  const inp = el('input'); inp.type = 'text'; inp.placeholder = placeholder; inp.value = obj[key] ?? '';
+  inp.setAttribute('aria-label', label);
+  inp[live ? 'oninput' : 'onchange'] = () => { obj[key] = inp.value.trim() || null; onChange(); };
+  row.appendChild(inp);
   parent.appendChild(row);
 }
-function seg(options, key) {
-  const row = document.createElement('div'); row.className = 'seg';
+function plainNum(parent, label, key, { obj, onChange, tip = TIPS[key] }) {
+  const row = el('div', 'row');
+  row.appendChild(labelEl(label, tip));
+  const inp = el('input'); inp.type = 'number'; inp.step = 'any'; inp.value = obj[key] ?? '';
+  inp.style.width = '100%';
+  inp.onchange = () => { obj[key] = inp.value === '' ? null : Number(inp.value); onChange(); };
+  row.appendChild(inp);
+  parent.appendChild(row);
+}
+function seg(parent, options, key, { tip = TIPS[key] } = {}) {
+  const row = el('div', 'row');
+  row.appendChild(labelEl('Theme', tip));
+  const s = el('div', 'seg');
   options.forEach(([val, label]) => {
-    const b = document.createElement('button'); b.textContent = label;
-    b.className = state[key] === val ? 'on' : '';
-    b.onclick = () => { state[key] = val; row.querySelectorAll('button').forEach(x => x.className = ''); b.className = 'on'; apply(); };
-    row.appendChild(b);
+    const b = el('button', state[key] === val ? 'on' : '', label); b.type = 'button';
+    b.onclick = () => { state[key] = val; s.querySelectorAll('button').forEach(x => x.className = ''); b.className = 'on'; apply(); };
+    s.appendChild(b);
   });
-  panel.appendChild(row);
+  row.appendChild(s);
+  parent.appendChild(row);
+}
+// Action picker for the common actions. The value is the action object of the YAML.
+const ACTIONS = [['', 'Default'], ['none', 'None'], ['more-info', 'More info'], ['toggle', 'Toggle'],
+  ['navigate', 'Navigate to a view'], ['url', 'Open a URL'], ['popup', 'browser_mod popup']];
+const PARAM = { navigate: ['navigation_path', '/lovelace/0'], url: ['url_path', 'https://www.home-assistant.io'], popup: ['title', 'Rehoboam'] };
+function actionKind(a) {
+  if (!a) return '';
+  if (a.action === 'fire-dom-event' && a.browser_mod) return 'popup';
+  return a.action || '';
+}
+function actionParam(a, kind) {
+  if (!a || !PARAM[kind]) return '';
+  return kind === 'popup' ? (a.browser_mod.data && a.browser_mod.data.title) || '' : a[PARAM[kind][0]] || '';
+}
+function buildAction(kind, param) {
+  if (!kind) return null;
+  if (kind === 'popup') return { action: 'fire-dom-event', browser_mod: { service: 'browser_mod.popup', data: { title: param || PARAM.popup[1] } } };
+  const a = { action: kind };
+  if (PARAM[kind]) a[PARAM[kind][0]] = param || PARAM[kind][1];
+  return a;
+}
+function actionField(parent, label, key, { obj = state, tip = TIPS[key] } = {}) {
+  const row = el('div', 'row');
+  row.appendChild(labelEl(label, tip));
+  const ctl = el('div', 'ctl');
+  const sel = el('select');
+  ACTIONS.forEach(([val, name]) => { const o = el('option', '', name); o.value = val; sel.appendChild(o); });
+  const par = el('input'); par.type = 'text';
+  ctl.append(sel, par); row.appendChild(ctl);
+  const sync = () => {
+    const kind = actionKind(obj[key]);
+    sel.value = ACTIONS.some(([v]) => v === kind) ? kind : '';
+    par.style.display = PARAM[kind] ? '' : 'none';
+    par.placeholder = PARAM[kind] ? PARAM[kind][1] : '';
+    par.value = actionParam(obj[key], kind);
+  };
+  const update = () => { obj[key] = buildAction(sel.value, par.value.trim()); sync(); apply(); };
+  sel.onchange = update;
+  par.onchange = update;
+  sync();
+  parent.appendChild(row);
 }
 
-// ---- panel ----
-h(grid ? 'Theme and eclipse (grid: per cell)' : 'Theme and eclipse');
-if (!grid) {
-  seg([['dark', 'Dark'], ['light', 'Light'], ['auto', 'Auto']], 'theme_mode');
-  check('HA dark mode (used by Auto)', '_ha_dark');
-  check('Eclipse override (test_divergence)', '_eclipse_override');
-  slider('Eclipse amount (test_divergence)', 'test_divergence', 0, 1, 0.01);
+// ---- entities ----
+const DIV_TIP = 'Simulated sensor value for this page only, from 0 (baseline) to 1 (critical). It is not part of the config.';
+function thresholdBounds(e) {
+  const base = isSet(e.baseline) ? Number(e.baseline) : 0;
+  const crit = isSet(e.critical) ? Number(e.critical) : 100;
+  const lo = Math.min(base, crit), hi = Math.max(base, crit);
+  const span = hi - lo;
+  const step = span > 0 ? Math.pow(10, Math.floor(Math.log10(span / 100))) : 1;
+  const div = state.divergence_threshold ?? 0.15;
+  const mon = state.monitoring_threshold ?? div;
+  return { lo, hi, step, divAt: roundTo(base + div * (crit - base), step), monAt: roundTo(base + mon * (crit - base), step) };
 }
-check('Eclipse follows divergence (untick for a fixed angle)', '_eclipse_follow');
-slider('Eclipse angle (fixed)', 'eclipse_angle', 0, 360, 1);
-slider('Eclipse intensity', 'eclipse_intensity', 0, 2, 0.05);
-slider('Corona rays', 'ray_intensity', 0, 1, 0.05);
-
-h('Waves and strata');
-slider('Wave amplitude scale', 'amplitude_scale', 0.4, 2, 0.05);
-slider('Peak width', 'peak_width', 0.4, 3, 0.05);
-slider('Peak sharpness', 'peak_sharpness', 0, 1, 0.05);
-slider('Peak prominence', 'peak_height', 0.3, 1.43, 0.01);
-slider('Strata width', 'strata_width', 0.3, 2.5, 0.05);
-slider('Baseline wave height', 'baseline_height', 0, 5, 0.1);
-slider('Spike 3D shading', 'facet_shading', 0, 1, 0.05);
-check('Wobbling ring shading', 'ring_shading');
-
-h('Ambient strata');
-slider('Count', 'ambient_count', 0, 12, 1);
-slider('Size', 'ambient_size', 0, 1, 0.01);
-slider('Width', 'ambient_width', 0.3, 2.5, 0.05);
-slider('Lifetime (s)', 'ambient_lifetime', 4, 300, 1);
-
-h('Callouts');
-slider('Global divergence threshold (0-1)', 'divergence_threshold', 0, 1, 0.01);
-check('Global monitoring threshold on', '_monitoring_on');
-slider('Global monitoring threshold (0-1)', 'monitoring_threshold', 0, 1, 0.01);
-slider('Transition tau (s)', 'transition_tau', 0.2, 10, 0.1);
-text('Label font (CSS font-family, empty = Barlow Condensed)', 'font_family', "'Roboto Condensed', sans-serif");
-slider('Label font size (px)', 'font_size', 8, 32, 0.5);
-slider('Hold duration (ms)', 'hold_time', 150, 5000, 50);
-
-h('Entities');
-const divRows = [];
-ENTS.forEach(e => {
-  const box = document.createElement('details');
-  box.innerHTML = `<summary>${e.category} (${e.entity})</summary>`;
-  panel.appendChild(box);
-  divRows.push(slider(`Divergence (live value)`, 'div', 0, 1, 0.01, { obj: e, onChange: pushStates, parent: box }));
-  slider('Angle (°)', 'angle', 0, 360, 1, { obj: e, parent: box });
-  check('Always visible callout', 'always_visible', { obj: e, parent: box });
-  check('Own thresholds (else the global ones)', 'own', { obj: e, parent: box });
-  const lo = Math.min(e.baseline, e.critical), hi = Math.max(e.baseline, e.critical);
-  const step = (hi - lo) / 100;
-  slider(`Monitoring threshold (${e.unit})`, 'monitoring_threshold', lo, hi, step, { obj: e, parent: box });
-  slider(`Divergence threshold (${e.unit})`, 'divergence_threshold', lo, hi, step, { obj: e, parent: box });
-});
-const rowB = document.createElement('div'); rowB.className = 'seg';
-[['All 0', () => ENTS.forEach(e => e.div = 0)], ['All 1', () => ENTS.forEach(e => e.div = 1)], ['Random', () => ENTS.forEach(e => e.div = Math.random())]].forEach(([t, fn]) => {
-  const b = document.createElement('button'); b.className = 'btn'; b.textContent = t;
-  b.onclick = () => { fn(); divRows.forEach(r => r.sync()); pushStates(); };
-  rowB.appendChild(b);
-});
-panel.appendChild(rowB);
-
-h('Layout and performance');
-text('Card height (CSS, empty = full window)', 'height', '500px');
-slider('Ring scale', 'ring_scale', 0.25, 1, 0.01);
-slider('Resolution scale', 'resolution_scale', 0.35, 1, 0.05);
-slider('Idle FPS', 'fps_idle', 10, 60, 1);
-slider('Active FPS', 'fps_active', 15, 60, 1);
-
-const stats = document.createElement('div'); stats.className = 'stats'; panel.appendChild(stats);
-const cfgOut = document.createElement('button'); cfgOut.className = 'btn'; cfgOut.style.marginTop = '8px'; cfgOut.style.width = '100%';
-cfgOut.textContent = 'Copy config as YAML';
-cfgOut.onclick = () => {
-  const c = cardConfig(0); delete c.entities; if (!state.height) delete c.height;
-  const yaml = 'type: custom:lovelace-rehoboam\n' + Object.entries(c).filter(([, val]) => val !== null && val !== undefined).map(([k, val]) => `${k}: ${typeof val === 'object' ? JSON.stringify(val) : val}`).join('\n');
-  navigator.clipboard && navigator.clipboard.writeText(yaml);
-  cfgOut.textContent = 'Copied';
-  setTimeout(() => cfgOut.textContent = 'Copy config as YAML', 1200);
-};
-panel.appendChild(cfgOut);
-
-// ---- cards ----
-document.getElementById('cells').className = grid ? 'grid' : 'single';
-if (!grid) document.getElementById('c' + one).classList.add('sel');
-window.cards = [];
-const s = document.createElement('script'); s.src = v + '.js?' + Date.now();
-s.onload = () => {
-  window.cards = PRESETS.map((_, i) => {
-    if (!grid && String(i) !== one) return null;
-    const el = document.createElement('lovelace-rehoboam');
-    el.setConfig(cardConfig(i));
-    document.getElementById('c' + i).appendChild(el);
-    el.hass = hassStates();
-    // Measure LUT build time and frame rate
-    const orig = el._updatePolarLUT.bind(el);
-    el._lutStats = { n: 0, ms: 0 };
-    el._updatePolarLUT = t => { const t0 = performance.now(); orig(t); el._lutStats.ms += performance.now() - t0; el._lutStats.n++; };
-    return el;
+function autoAngle(idx) {
+  const unangled = ENTS.map(e => !isSet(e.angle));
+  const count = unangled.filter(Boolean).length;
+  const before = unangled.slice(0, idx).filter(Boolean).length;
+  return Math.round((22.5 + before * 360 / Math.max(1, count)) % 360);
+}
+let entList, divRows = [], thresholdRows = [];
+function renderEntities() {
+  entList.textContent = '';
+  divRows = []; thresholdRows = [];
+  ENTS.forEach((e, idx) => {
+    const box = el('details', 'ent');
+    box.open = !!e._open;
+    box.ontoggle = () => { e._open = box.open; };
+    const sum = el('summary');
+    const title = el('span');
+    const setTitle = () => { title.textContent = `#${idx + 1} ${e.category || 'SYSTEM ANOMALY'} · ${e.name || e.entity || 'Unconfigured'}`; };
+    setTitle();
+    const rm = el('button', 'btn danger', 'Remove'); rm.type = 'button';
+    rm.onclick = ev => { ev.preventDefault(); ENTS.splice(idx, 1); renderEntities(); apply(); };
+    sum.append(title, rm);
+    box.appendChild(sum);
+    const changed = () => { setTitle(); apply(); };
+    const bounds = () => { const b = thresholdBounds(e); thresholds.forEach((r, i) => r.setBounds(b.lo, b.hi, b.step, i ? b.divAt : b.monAt)); changed(); };
+    divRows.push(num(box, 'Simulated value', '_div', 0, 1, 0.01, { obj: e, onChange: pushStates, tip: DIV_TIP }));
+    text(box, 'Entity ID', 'entity', 'sensor.living_room_temperature', { obj: e, onChange: changed });
+    const pair1 = el('div', 'pair'); box.appendChild(pair1);
+    text(pair1, 'Name', 'name', 'Friendly name', { obj: e, onChange: changed });
+    text(pair1, 'Category', 'category', 'SYSTEM ANOMALY', { obj: e, onChange: changed });
+    const pair2 = el('div', 'pair'); box.appendChild(pair2);
+    plainNum(pair2, 'Baseline', 'baseline', { obj: e, onChange: bounds });
+    plainNum(pair2, 'Critical', 'critical', { obj: e, onChange: bounds });
+    text(box, 'Unit', 'unit', 'Unit of the entity', { obj: e, onChange: changed });
+    num(box, 'Angle (°, empty = auto)', 'angle', 0, 360, 1, { obj: e, nullable: true, placeholder: 'Auto', unsetAt: autoAngle(idx) });
+    const b = thresholdBounds(e);
+    const thresholds = [
+      num(box, 'Monitoring threshold', 'monitoring_threshold', b.lo, b.hi, b.step, { obj: e, nullable: true, placeholder: 'Card setting', unsetAt: b.monAt, tip: TIPS.ent_monitoring_threshold }),
+      num(box, 'Divergence threshold', 'divergence_threshold', b.lo, b.hi, b.step, { obj: e, nullable: true, placeholder: 'Card setting', unsetAt: b.divAt, tip: TIPS.ent_divergence_threshold }),
+    ];
+    thresholdRows.push({ e, rows: thresholds });
+    check(box, 'Always visible callout', 'always_visible', { obj: e });
+    actionField(box, 'Tap action', 'tap_action', { obj: e });
+    actionField(box, 'Hold action', 'hold_action', { obj: e });
+    entList.appendChild(box);
   });
+}
+// The card thresholds move the resting point of the entity threshold sliders
+function refreshThresholds() {
+  thresholdRows.forEach(({ e, rows }) => { const b = thresholdBounds(e); rows.forEach((r, i) => r.setBounds(b.lo, b.hi, b.step, i ? b.divAt : b.monAt)); });
+}
+
+// ---- config output ----
+let yamlBox;
+function renderYaml() { if (yamlBox) yamlBox.textContent = toYaml(exportConfig()); }
+function flash(btn, msg) {
+  const old = btn.textContent; btn.textContent = msg;
+  setTimeout(() => { btn.textContent = old; }, 1300);
+}
+async function copyText(textValue, btn) {
+  try { await navigator.clipboard.writeText(textValue); flash(btn, 'Copied'); } catch (err) { flash(btn, 'Copy failed'); }
+}
+function shareLink() {
+  const cfg = exportConfig();
+  cfg.entities = cfg.entities.map((o, i) => ({ ...o, _div: ENTS[i]._div }));
+  return location.origin + location.pathname + location.search + '#cfg=' + encodeCfg(cfg);
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+// ---- build the page once the card script is loaded ----
+function buildPanel() {
+  const panel = document.getElementById('panel');
+  const intro = el('p', 'intro', 'Change the settings, move the simulated values, then copy the YAML into a manual card in your dashboard. Tap the centre or a callout to see its action.');
+  panel.appendChild(intro);
+
+  heading(panel, 'Theme and eclipse');
+  seg(panel, [['dark', 'Dark'], ['light', 'Light'], ['auto', 'Auto']], 'theme_mode');
+  check(panel, 'Simulate Home Assistant dark mode', '_ha_dark', { tip: 'Page only: the dark mode setting that theme Auto follows.' });
+  num(panel, 'Eclipse angle (°, empty = follow)', 'eclipse_angle', 0, 360, 1, { nullable: true, placeholder: 'Follow', unsetAt: 180 });
+  num(panel, 'Eclipse intensity', 'eclipse_intensity', 0, 2, 0.05);
+  num(panel, 'Corona rays', 'ray_intensity', 0, 1, 0.05);
+  num(panel, 'Test divergence (empty = live)', 'test_divergence', 0, 1, 0.01, { nullable: true, placeholder: 'Live', unsetAt: 0 });
+
+  heading(panel, 'Waves and strata');
+  num(panel, 'Wave amplitude scale', 'amplitude_scale', 0.4, 2, 0.05);
+  num(panel, 'Peak width', 'peak_width', 0.4, 3, 0.05);
+  num(panel, 'Peak sharpness (0 = dome, 1 = point)', 'peak_sharpness', 0, 1, 0.05);
+  num(panel, 'Peak prominence', 'peak_height', 0.3, 1.43, 0.01);
+  num(panel, 'Strata width', 'strata_width', 0.3, 2.5, 0.05);
+  num(panel, 'Baseline wave height (0 = flat ring)', 'baseline_height', 0, 5, 0.1);
+  num(panel, 'Spike 3D shading', 'facet_shading', 0, 1, 0.05);
+  check(panel, 'Wobbling ring shading', 'ring_shading');
+
+  heading(panel, 'Ambient strata');
+  num(panel, 'Count', 'ambient_count', 0, 12, 1);
+  num(panel, 'Size', 'ambient_size', 0, 1, 0.01);
+  num(panel, 'Width', 'ambient_width', 0.3, 2.5, 0.05);
+  num(panel, 'Lifetime (s)', 'ambient_lifetime', 4, 300, 1);
+
+  heading(panel, 'Callouts');
+  const onThreshold = () => { refreshThresholds(); apply(); };
+  num(panel, 'Divergence threshold (0–1)', 'divergence_threshold', 0, 1, 0.01, { onChange: onThreshold });
+  num(panel, 'Monitoring threshold (0–1, empty = none)', 'monitoring_threshold', 0, 1, 0.01, { nullable: true, placeholder: 'None', unsetAt: 0.1, onChange: onThreshold });
+  num(panel, 'Transition smoothing tau (s)', 'transition_tau', 0.2, 15, 0.1);
+  text(panel, 'Label font (CSS font-family)', 'font_family', 'Barlow Condensed (default)');
+  num(panel, 'Label font size (px)', 'font_size', 8, 32, 0.5);
+  num(panel, 'Hold duration (ms)', 'hold_time', 150, 5000, 50);
+
+  heading(panel, 'Ring centre');
+  text(panel, 'Centre entity', 'center_entity', 'sensor.anything');
+  actionField(panel, 'Centre tap action', 'center_tap_action');
+  actionField(panel, 'Centre hold action', 'center_hold_action');
+
+  heading(panel, `Entities`);
+  entList = el('div'); panel.appendChild(entList);
+  renderEntities();
+  const entBtns = el('div', 'seg');
+  const addBtn = el('button', 'btn primary', '+ Add entity'); addBtn.type = 'button';
+  addBtn.onclick = () => { ENTS.push({ entity: '', category: 'SYSTEM ANOMALY', baseline: 0, critical: 100, _div: 0.5, _open: true }); renderEntities(); apply(); };
+  entBtns.appendChild(addBtn);
+  [['All 0', () => ENTS.forEach(e => { e._div = 0; })], ['All 1', () => ENTS.forEach(e => { e._div = 1; })], ['Random', () => ENTS.forEach(e => { e._div = Math.random(); })]].forEach(([label, fn]) => {
+    const b = el('button', 'btn', label); b.type = 'button';
+    b.onclick = () => { fn(); divRows.forEach(r => r.sync()); pushStates(); };
+    entBtns.appendChild(b);
+  });
+  panel.appendChild(entBtns);
+
+  heading(panel, 'Layout and performance');
+  text(panel, 'Card height (CSS)', 'height', '500px', { tip: TIPS.height + ' The preview here always fills the window.' });
+  num(panel, 'Ring scale', 'ring_scale', 0.25, 0.65, 0.01);
+  num(panel, 'Resolution scale', 'resolution_scale', 0.35, 1, 0.05);
+  num(panel, 'Idle FPS', 'fps_idle', 10, 60, 1);
+  num(panel, 'Active FPS', 'fps_active', 15, 60, 1);
+
+  heading(panel, 'Your config');
+  yamlBox = el('pre'); yamlBox.id = 'yaml'; panel.appendChild(yamlBox);
+  const dbg = el('details'); dbg.appendChild(el('summary', '', 'Debug'));
+  const stats = el('div', 'stats'); dbg.appendChild(stats); panel.appendChild(dbg);
+  const bar = el('div', 'actions');
+  const copyBtn = el('button', 'btn primary', 'Copy YAML'); copyBtn.type = 'button';
+  copyBtn.onclick = () => copyText(toYaml(exportConfig()) + '\n', copyBtn);
+  const linkBtn = el('button', 'btn', 'Copy share link'); linkBtn.type = 'button';
+  linkBtn.onclick = () => { const url = shareLink(); history.replaceState(null, '', url); copyText(url, linkBtn); };
+  const resetBtn = el('button', 'btn', 'Reset'); resetBtn.type = 'button';
+  resetBtn.onclick = () => { location.href = location.pathname + location.search; };
+  bar.append(copyBtn, linkBtn, resetBtn);
+  panel.appendChild(bar);
+  renderYaml();
+  return stats;
+}
+
+function init() {
+  TIPS = (customElements.get('lovelace-rehoboam-editor') || {}).settingTips || {};
+  // Card defaults, read from the card itself so this page never drifts from it
+  const probe = document.createElement('lovelace-rehoboam');
+  probe.setConfig({ entities: [] });
+  DEFAULTS = { ...probe._config, font_family: null, height: null };
+  state = { _ha_dark: true };
+  CARD_KEYS.forEach(k => { state[k] = k in DEFAULTS ? DEFAULTS[k] : null; });
+  ENTS = DEMO_ENTS.map(e => ({ ...e }));
+  const shared = loadShared();
+  if (shared) {
+    CARD_KEYS.forEach(k => { if (k in shared) state[k] = shared[k]; });
+    if (Array.isArray(shared.entities)) ENTS = shared.entities.map(e => ({ _div: 0.5, ...(typeof e === 'string' ? { entity: e } : e) }));
+  }
+  document.getElementById('ver').textContent = typeof CARD_VERSION !== 'undefined' ? 'v' + CARD_VERSION : '';
+  const stats = buildPanel();
+
+  const cells = document.getElementById('cells');
+  cells.className = grid ? 'grid' : 'single';
+  if (!grid) document.getElementById('c' + (one ?? '0')).classList.add('sel');
+  cards = PRESETS.map((_, i) => {
+    if (!grid && String(i) !== (one ?? '0')) return null;
+    const card = document.createElement('lovelace-rehoboam');
+    card.setConfig(cardConfig(i));
+    document.getElementById('c' + i).appendChild(card);
+    card.hass = hassStates();
+    const orig = card._updatePolarLUT.bind(card);
+    card._lutStats = { n: 0, ms: 0 };
+    card._updatePolarLUT = t => { const t0 = performance.now(); orig(t); card._lutStats.ms += performance.now() - t0; card._lutStats.n++; };
+    return card;
+  });
+  window.cards = cards;
+
+  // No Home Assistant here: show what the action would do
   window.addEventListener('hass-action', e => {
     const { config, action } = e.detail;
     const a = config[`${action}_action`] || {};
-    window.lastAction = `${action} -> ${a.action}${a.browser_mod ? ' ' + a.browser_mod.service : ''}${config.entity ? ' (' + config.entity + ')' : ''}`;
-    console.log('hass-action', action, JSON.stringify(config));
+    let what = a.action || 'none';
+    if (a.browser_mod) what = `${a.browser_mod.service} popup`;
+    else if (a.navigation_path) what += ` ${a.navigation_path}`;
+    else if (a.url_path) what += ` ${a.url_path}`;
+    const where = config.entity ? ` on ${config.entity}` : '';
+    window.lastAction = `${action}: ${what}${where}`;
+    toast(`${action === 'hold' ? 'Hold' : 'Tap'}${where}: ${what}`);
   });
   setInterval(() => {
     const c = cards.find(Boolean); if (!c) return;
     const st = c._lutStats;
-    stats.textContent = `frames/s: ${st.n}  LUT: ${(st.ms / Math.max(1, st.n)).toFixed(3)} ms\ncanvas: ${c._canvas.width}x${c._canvas.height}  v${typeof CARD_VERSION !== 'undefined' ? CARD_VERSION : '?'}\nlast action: ${window.lastAction || '(tap the centre or a callout)'}`;
+    stats.textContent = `frames/s: ${st.n}  LUT: ${(st.ms / Math.max(1, st.n)).toFixed(3)} ms\ncanvas: ${c._canvas.width}x${c._canvas.height}\nlast action: ${window.lastAction || '-'}`;
     st.n = 0; st.ms = 0;
   }, 1000);
+}
+
+document.getElementById('toggle').onclick = e => {
+  const hidden = document.body.classList.toggle('nopanel');
+  e.currentTarget.textContent = hidden ? 'Show panel' : 'Hide panel';
+  cards.forEach(c => c && c._onResize());
 };
+const s = document.createElement('script');
+s.src = scriptName + '.js?' + Date.now();
+s.onload = init;
 document.head.appendChild(s);
-</script></body></html>
+</script>
+</body></html>

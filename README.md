@@ -6,6 +6,8 @@
 
 A WebGL custom Lovelace card inspired by the **Westworld Rehoboam** AI system. It shows the state of your home as divergence waves around a central eclipse. Each entity pushes up a peak on the ring as it moves from its baseline toward its critical value, and a callout labels it.
 
+**[Try it in the playground](https://fheilmann.github.io/lovelace-rehoboam/)**: change every setting, simulate sensor values and copy the YAML config for your dashboard, without Home Assistant.
+
 ---
 
 ## Features
@@ -48,6 +50,9 @@ A WebGL custom Lovelace card inspired by the **Westworld Rehoboam** AI system. I
 ---
 
 ## Configuration
+
+### Playground
+The [playground](https://fheilmann.github.io/lovelace-rehoboam/) runs the card in your browser with example sensors. Change the settings, replace the example entities with your own, then click **Copy YAML** and paste the result into a manual card. **Copy share link** gives a link that opens the playground with your current settings.
 
 ### Visual Editor
 1. In your Lovelace dashboard, click **Edit Dashboard** > **Add Card**.
@@ -183,13 +188,13 @@ The card-level `monitoring_threshold` and `divergence_threshold` are fractions (
 
 ## Development
 
-`harness.html` is a test page that runs the card outside Home Assistant with fake entities. It has controls for every option, live divergence sliders and a button that copies the config as YAML. Serve the repository folder and open the page:
+`harness.html` is the playground page. The `Playground` workflow publishes it to GitHub Pages as `index.html`, together with `lovelace-rehoboam.js`, on every push to `main`. To run it locally, serve the repository folder and open the page:
 
 ```bash
 python3 -m http.server 8766 --bind 127.0.0.1
 ```
 
-Then open `http://127.0.0.1:8766/harness.html`.
+Then open `http://127.0.0.1:8766/harness.html`. URL options for testing: `grid=1` shows the 4 theme and eclipse presets side by side, `one=0` to `one=3` shows one preset, `panel=0` hides the settings panel, and `v=<name>` loads `<name>.js` instead of the card.
 
 ---
 
