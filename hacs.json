@@ -1,5 +1,5 @@
 {
   "name": "Rehoboam Card",
   "filename": "lovelace-rehoboam.js",
-  "render_readme": true
+  "homeassistant": "2023.12.0"
 }

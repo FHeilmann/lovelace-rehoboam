@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="images/hero.webp" alt="The Rehoboam card: a dark ring with an eclipse glow, peaks rising where sensors diverge, and labelled callouts" width="100%">
+<img src="https://raw.githubusercontent.com/FHeilmann/lovelace-rehoboam/main/images/hero.webp" alt="The Rehoboam card: a dark ring with an eclipse glow, peaks rising where sensors diverge, and labelled callouts" width="100%">
 
 # Rehoboam
 
@@ -9,7 +9,7 @@
 [![HACS](https://img.shields.io/badge/HACS-Custom-41BDF5?style=for-the-badge)](https://hacs.xyz)
 [![Release](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FFHeilmann%2Flovelace-rehoboam%2Freleases%2Flatest&query=%24.tag_name&label=release&color=blue&style=for-the-badge)](https://github.com/FHeilmann/lovelace-rehoboam/releases/latest)
 [![Validation](https://img.shields.io/github/actions/workflow/status/FHeilmann/lovelace-rehoboam/validate.yml?branch=main&style=for-the-badge&label=validation)](https://github.com/FHeilmann/lovelace-rehoboam/actions/workflows/validate.yml)
-[![License](https://img.shields.io/github/license/FHeilmann/lovelace-rehoboam?style=for-the-badge&label=license)](LICENSE)
+[![License](https://img.shields.io/github/license/FHeilmann/lovelace-rehoboam?style=for-the-badge&label=license)](https://github.com/FHeilmann/lovelace-rehoboam/blob/main/LICENSE)
 
 [**Try the playground**](https://fheilmann.github.io/lovelace-rehoboam/) · [Install](#installation) · [Quick start](#quick-start) · [All options](#configuration-options)
 
@@ -68,16 +68,16 @@ This card is a fan project. See [Credits](#credits) for the work that inspired i
 
 <table>
 <tr>
-<td width="50%"><img src="images/hero-dark.png" alt="The card in the dark theme"></td>
-<td width="50%"><img src="images/light.png" alt="The card in the light theme"></td>
+<td width="50%"><img src="https://raw.githubusercontent.com/FHeilmann/lovelace-rehoboam/main/images/hero-dark.png" alt="The card in the dark theme"></td>
+<td width="50%"><img src="https://raw.githubusercontent.com/FHeilmann/lovelace-rehoboam/main/images/light.png" alt="The card in the light theme"></td>
 </tr>
 <tr>
 <td align="center"><b>Dark</b> (night eclipse)</td>
 <td align="center"><b>Light</b> (ink on paper)</td>
 </tr>
 <tr>
-<td width="50%"><img src="images/german.png" alt="The card with German callouts and German number format"></td>
-<td width="50%"><img src="images/playground.png" alt="The playground: the card with its settings panel"></td>
+<td width="50%"><img src="https://raw.githubusercontent.com/FHeilmann/lovelace-rehoboam/main/images/german.png" alt="The card with German callouts and German number format"></td>
+<td width="50%"><img src="https://raw.githubusercontent.com/FHeilmann/lovelace-rehoboam/main/images/playground.png" alt="The playground: the card with its settings panel"></td>
 </tr>
 <tr>
 <td align="center"><b>Localized</b>: German callouts and number format</td>
@@ -90,8 +90,8 @@ This card is a fan project. See [Credits](#credits) for the work that inspired i
 <br>
 <table>
 <tr>
-<td width="50%" valign="top"><img src="images/editor.png" alt="The visual editor: sections with sliders, number boxes and tooltips"></td>
-<td width="50%" valign="top"><img src="images/editor-entity.png" alt="An entity in the visual editor, with a state map"></td>
+<td width="50%" valign="top"><img src="https://raw.githubusercontent.com/FHeilmann/lovelace-rehoboam/main/images/editor.png" alt="The visual editor: sections with sliders, number boxes and tooltips"></td>
+<td width="50%" valign="top"><img src="https://raw.githubusercontent.com/FHeilmann/lovelace-rehoboam/main/images/editor-entity.png" alt="An entity in the visual editor, with a state map"></td>
 </tr>
 <tr>
 <td align="center">Sections with a slider, a number box and a tooltip for each setting</td>
@@ -357,4 +357,4 @@ The README images come from the playground. With the server running, `node scrip
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/FHeilmann/lovelace-rehoboam/blob/main/LICENSE) file for details.
