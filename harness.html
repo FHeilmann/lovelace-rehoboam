@@ -37,8 +37,15 @@ input[type=number],input[type=text],select{padding:4px 6px;background:var(--fiel
 .ctl input[type=text]{flex:1.4}
 .check{gap:6px;margin:8px 0;cursor:pointer}
 .seg{display:flex;gap:4px;margin:6px 0}
-.seg button,.btn{flex:1;padding:5px;border:1px solid var(--line);background:#25252d;color:var(--text);border-radius:4px;cursor:pointer;font:inherit}
+.seg button,.btn{flex:1;min-width:0;min-height:32px;padding:6px 10px;border:1px solid var(--line);background:#25252d;color:var(--text);border-radius:5px;cursor:pointer;font:500 12px/1.2 system-ui,-apple-system,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background .15s,border-color .15s}
+.seg button:hover,.btn:hover{background:#30303a;border-color:#45454f}
 .seg button.on,.btn.primary{background:var(--on);border-color:#5a8fd8;color:#fff}
+.seg button.on:hover,.btn.primary:hover{background:#4779bd;border-color:#6a9ce0}
+.btn.ghost{background:transparent}
+.btn.done,.btn.done:hover{background:#2e5d3a;border-color:#4a8a5a;color:#fff}
+.btn.add{display:block;width:100%;margin:8px 0 4px;border-style:dashed;background:transparent;color:var(--accent)}
+.sim{display:flex;align-items:center;gap:6px;margin:6px 0}
+.sim>span{color:var(--muted);white-space:nowrap;margin-right:2px}
 .btn.danger{flex:none;color:#ff8a80;border-color:#5a3030;background:transparent}
 .pair{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
 details.ent{margin:8px 0;padding:2px 10px 6px;border:1px solid var(--line);border-radius:6px;background:#1e1e25}
@@ -49,7 +56,7 @@ details.ent>summary span{flex:1;overflow:hidden;text-overflow:ellipsis;white-spa
 .tip:hover,.tip:focus{color:var(--accent)}
 .tip:hover::after,.tip:focus::after{content:attr(data-tip);position:absolute;left:0;right:0;top:22px;z-index:20;padding:8px 10px;border-radius:6px;background:#2a2a33;color:var(--text);border:1px solid #3a3a46;box-shadow:0 4px 14px rgba(0,0,0,.45);font:400 12px/1.4 system-ui,sans-serif;white-space:normal;pointer-events:none}
 #yaml{margin:6px 0;padding:8px;max-height:320px;overflow:auto;background:var(--field);border:1px solid var(--line);border-radius:4px;font:12px/1.45 ui-monospace,monospace;white-space:pre;color:#cfe3ff}
-.actions{position:sticky;bottom:-14px;display:flex;gap:6px;padding:10px 0;background:var(--panel)}
+.actions{position:sticky;bottom:-14px;z-index:5;display:grid;grid-template-columns:1.25fr 1fr .8fr;gap:6px;margin:12px -14px 0;padding:10px 14px 14px;background:var(--panel);border-top:1px solid var(--line);box-shadow:0 -10px 14px -10px rgba(0,0,0,.7)}
 .stats{white-space:pre;padding:6px;background:var(--field);border-radius:4px;font:11px ui-monospace,monospace;color:#9f9}
 #toast{position:fixed;left:14px;bottom:14px;z-index:30;max-width:min(420px,calc(100vw - 28px));padding:8px 12px;border-radius:6px;background:#2a2a33;border:1px solid #3a3a46;opacity:0;transition:opacity .25s;pointer-events:none}
 #toast.show{opacity:1}
@@ -59,7 +66,7 @@ details.ent>summary span{flex:1;overflow:hidden;text-overflow:ellipsis;white-spa
   #cells.single .cell.sel{height:min(100vw,72vh)}
   #cells{height:auto}
   #panel{width:auto;border-left:none;border-top:1px solid var(--line);overflow:visible;padding:4px 16px 16px}
-  .actions{bottom:0}
+  .actions{bottom:0;margin:12px -16px 0;padding:10px 16px 14px}
   header nav{margin-left:0}
 }
 </style>
@@ -393,12 +400,25 @@ function refreshThresholds() {
 // ---- config output ----
 let yamlBox;
 function renderYaml() { if (yamlBox) yamlBox.textContent = toYaml(exportConfig()); }
-function flash(btn, msg) {
-  const old = btn.textContent; btn.textContent = msg;
-  setTimeout(() => { btn.textContent = old; }, 1300);
+function flash(btn, msg, ok) {
+  if (btn._flash) clearTimeout(btn._flash); else btn._label = btn.textContent;
+  btn.textContent = msg;
+  btn.classList.toggle('done', ok);
+  btn._flash = setTimeout(() => { btn.textContent = btn._label; btn.classList.remove('done'); btn._flash = null; }, 1300);
 }
 async function copyText(textValue, btn) {
-  try { await navigator.clipboard.writeText(textValue); flash(btn, 'Copied'); } catch (err) { flash(btn, 'Copy failed'); }
+  try {
+    await navigator.clipboard.writeText(textValue);
+    flash(btn, 'Copied', true);
+  } catch (err) {
+    // Fallback for browsers without the clipboard API or without permission
+    const area = el('textarea'); area.value = textValue;
+    area.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    document.body.appendChild(area); area.select();
+    const ok = document.execCommand('copy');
+    area.remove();
+    flash(btn, ok ? 'Copied' : 'Copy failed', ok);
+  }
 }
 function shareLink() {
   const cfg = exportConfig();
@@ -460,16 +480,17 @@ function buildPanel() {
   heading(panel, `Entities`);
   entList = el('div'); panel.appendChild(entList);
   renderEntities();
-  const entBtns = el('div', 'seg');
-  const addBtn = el('button', 'btn primary', '+ Add entity'); addBtn.type = 'button';
+  const addBtn = el('button', 'btn add', '+ Add entity'); addBtn.type = 'button';
   addBtn.onclick = () => { ENTS.push({ entity: '', category: 'SYSTEM ANOMALY', baseline: 0, critical: 100, _div: 0.5, _open: true }); renderEntities(); apply(); };
-  entBtns.appendChild(addBtn);
-  [['All 0', () => ENTS.forEach(e => { e._div = 0; })], ['All 1', () => ENTS.forEach(e => { e._div = 1; })], ['Random', () => ENTS.forEach(e => { e._div = Math.random(); })]].forEach(([label, fn]) => {
+  panel.appendChild(addBtn);
+  const sim = el('div', 'sim');
+  sim.appendChild(el('span', '', 'Simulate all:'));
+  [['Calm', () => ENTS.forEach(e => { e._div = 0; })], ['Critical', () => ENTS.forEach(e => { e._div = 1; })], ['Random', () => ENTS.forEach(e => { e._div = Math.random(); })]].forEach(([label, fn]) => {
     const b = el('button', 'btn', label); b.type = 'button';
     b.onclick = () => { fn(); divRows.forEach(r => r.sync()); pushStates(); };
-    entBtns.appendChild(b);
+    sim.appendChild(b);
   });
-  panel.appendChild(entBtns);
+  panel.appendChild(sim);
 
   heading(panel, 'Layout and performance');
   text(panel, 'Card height (CSS)', 'height', '500px', { tip: TIPS.height + ' The preview here always fills the window.' });
@@ -485,9 +506,11 @@ function buildPanel() {
   const bar = el('div', 'actions');
   const copyBtn = el('button', 'btn primary', 'Copy YAML'); copyBtn.type = 'button';
   copyBtn.onclick = () => copyText(toYaml(exportConfig()) + '\n', copyBtn);
-  const linkBtn = el('button', 'btn', 'Copy share link'); linkBtn.type = 'button';
+  const linkBtn = el('button', 'btn', 'Share link'); linkBtn.type = 'button';
+  linkBtn.title = 'Copy a link that opens this page with your settings';
   linkBtn.onclick = () => { const url = shareLink(); history.replaceState(null, '', url); copyText(url, linkBtn); };
-  const resetBtn = el('button', 'btn', 'Reset'); resetBtn.type = 'button';
+  const resetBtn = el('button', 'btn ghost', 'Reset'); resetBtn.type = 'button';
+  resetBtn.title = 'Go back to the card defaults and the example entities';
   resetBtn.onclick = () => { location.href = location.pathname + location.search; };
   bar.append(copyBtn, linkBtn, resetBtn);
   panel.appendChild(bar);
