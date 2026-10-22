@@ -360,7 +360,7 @@ function easeTimeForProgress(progress, [x1, y1, x2, y2]) {
   }
   return bez((lo + hi) * 0.5, x1, x2);
 }
-const CARD_VERSION = '0.17.0';
+const CARD_VERSION = '0.18.0';
 
 console.info(
   `%c LOVELACE-REHOBOAM %c v${CARD_VERSION} `,
@@ -401,6 +401,7 @@ function roundToStep(value, step) {
 // box), select, text, bool, entity, action. An empty nullable number means "not set"; its slider
 // then rests at unsetAt (a number, or a function of the config).
 const SETTING_SECTIONS = [
+  { id: 'title', title: 'Title', hint: 'The subtitle accepts Home Assistant templates, for example {{ states("sensor.temperature") }} °C.' },
   { id: 'appearance', title: 'Appearance' },
   { id: 'eclipse', title: 'Eclipse' },
   { id: 'peak', title: 'Peak' },
@@ -412,6 +413,11 @@ const SETTING_SECTIONS = [
   { id: 'performance', title: 'Performance' }
 ];
 const CARD_SETTINGS = [
+  { key: 'title', section: 'title', type: 'text', label: 'Title', placeholder: 'Rehoboam',
+    tip: 'Text in the top left corner of the card. Empty shows no title.' },
+  { key: 'subtitle', section: 'title', type: 'template', label: 'Subtitle',
+    tip: 'Text below the title. Accepts Home Assistant templates, for example {{ states("sensor.outside_temperature") }}; the card updates it when the result changes.' },
+
   { key: 'theme_mode', section: 'appearance', type: 'select', label: 'Theme', default: 'dark',
     options: [['dark', 'Dark'], ['light', 'Light'], ['auto', 'Auto']],
     tip: 'Dark shows a night eclipse, light shows ink on paper. Auto follows the dark mode setting of Home Assistant.' },
@@ -566,6 +572,7 @@ const TRANSLATIONS = {
       state: 'Zustand', divergenceOf: 'Divergenz von {state}', removeState: '{state} entfernen'
     },
     sections: {
+      title: "Titel", title_hint: "Der Untertitel unterstützt Home-Assistant-Templates, zum Beispiel {{ states(\"sensor.temperatur\") }} °C.",
       appearance: "Darstellung", eclipse: "Eklipse", peak: "Gipfel", strata: "Schichten und Wellen", ambient: "Umgebungsschichten",
       divergence: "Divergenz", text: "Beschriftungstext", interaction: "Bedienung", performance: "Leistung",
       interaction_hint: "Tippe auf die Mitte des Rings oder auf eine Beschriftung oder halte sie gedrückt. Für ein browser_mod-Popup nutze die Aktion „fire-dom-event“ mit einem browser_mod-Block in YAML."
@@ -573,6 +580,8 @@ const TRANSLATIONS = {
     entityGroups: { source: "Entität", range: "Wertebereich", callout: "Beschriftung", actions: "Aktionen" },
     options: { theme_mode: { dark: 'Dunkel', light: 'Hell', auto: 'Auto' }, language: { '': 'Auto (Home Assistant)' } },
     settings: {
+      title: ["Titel", "Text in der linken oberen Ecke der Karte. Leer zeigt keinen Titel."],
+      subtitle: ["Untertitel", "Text unter dem Titel. Unterstützt Home-Assistant-Templates, zum Beispiel {{ states(\"sensor.aussentemperatur\") }}; die Karte aktualisiert ihn, wenn sich das Ergebnis ändert."],
       theme_mode: ['Design', 'Dunkel zeigt eine nächtliche Eklipse, hell zeigt Tinte auf Papier. Auto folgt dem Dunkelmodus von Home Assistant.'],
       eclipse_angle: ['Eklipsenwinkel (°, leer = folgen)', 'Richtung des Eklipsenleuchtens in Grad (0 = rechts, gegen den Uhrzeigersinn). Leer lassen, damit sich das Leuchten zur Entität mit der größten Divergenz dreht.', 'Folgen'],
       eclipse_intensity: ['Eklipsenintensität', 'Helligkeit der Eklipsensichel und ihrer Korona.'],
@@ -633,6 +642,7 @@ const TRANSLATIONS = {
       state: 'État', divergenceOf: 'Divergence de {state}', removeState: 'Supprimer {state}'
     },
     sections: {
+      title: "Titre", title_hint: "Le sous-titre accepte les modèles Home Assistant, par exemple {{ states(\"sensor.temperature\") }} °C.",
       appearance: "Apparence", eclipse: "Éclipse", peak: "Pic", strata: "Strates et vagues", ambient: "Strates ambiantes",
       divergence: "Divergence", text: "Texte des étiquettes", interaction: "Interaction", performance: "Performances",
       interaction_hint: "Appuyez ou maintenez le centre de l'anneau ou une étiquette. Pour une fenêtre browser_mod, utilisez l'action « fire-dom-event » avec un bloc browser_mod en YAML."
@@ -640,6 +650,8 @@ const TRANSLATIONS = {
     entityGroups: { source: "Entité", range: "Plage de valeurs", callout: "Étiquette", actions: "Actions" },
     options: { theme_mode: { dark: 'Sombre', light: 'Clair', auto: 'Auto' }, language: { '': 'Auto (Home Assistant)' } },
     settings: {
+      title: ["Titre", "Texte dans le coin supérieur gauche de la carte. Vide n'affiche aucun titre."],
+      subtitle: ["Sous-titre", "Texte sous le titre. Accepte les modèles Home Assistant, par exemple {{ states(\"sensor.outside_temperature\") }} ; la carte le met à jour quand le résultat change."],
       theme_mode: ['Thème', "Sombre affiche une éclipse de nuit, clair de l'encre sur papier. Auto suit le mode sombre de Home Assistant."],
       eclipse_angle: ["Angle de l'éclipse (°, vide = suivre)", "Direction de la lueur de l'éclipse en degrés (0 = droite, sens antihoraire). Laissez vide pour tourner la lueur vers l'entité la plus divergente.", 'Suivre'],
       eclipse_intensity: ["Intensité de l'éclipse", "Luminosité du croissant de l'éclipse et de sa couronne."],
@@ -700,6 +712,7 @@ const TRANSLATIONS = {
       state: 'Estado', divergenceOf: 'Divergencia de {state}', removeState: 'Eliminar {state}'
     },
     sections: {
+      title: "Título", title_hint: "El subtítulo admite plantillas de Home Assistant, por ejemplo {{ states(\"sensor.temperature\") }} °C.",
       appearance: "Apariencia", eclipse: "Eclipse", peak: "Pico", strata: "Estratos y ondas", ambient: "Estratos ambientales",
       divergence: "Divergencia", text: "Texto de las etiquetas", interaction: "Interacción", performance: "Rendimiento",
       interaction_hint: "Toca o mantén pulsado el centro del anillo o una etiqueta. Para una ventana de browser_mod usa la acción \"fire-dom-event\" con un bloque browser_mod en YAML."
@@ -707,6 +720,8 @@ const TRANSLATIONS = {
     entityGroups: { source: "Entidad", range: "Rango de valores", callout: "Etiqueta", actions: "Acciones" },
     options: { theme_mode: { dark: 'Oscuro', light: 'Claro', auto: 'Auto' }, language: { '': 'Auto (Home Assistant)' } },
     settings: {
+      title: ["Título", "Texto en la esquina superior izquierda de la tarjeta. Vacío no muestra título."],
+      subtitle: ["Subtítulo", "Texto bajo el título. Admite plantillas de Home Assistant, por ejemplo {{ states(\"sensor.outside_temperature\") }}; la tarjeta lo actualiza cuando cambia el resultado."],
       theme_mode: ['Tema', 'Oscuro muestra un eclipse nocturno, claro muestra tinta sobre papel. Auto sigue el modo oscuro de Home Assistant.'],
       eclipse_angle: ['Ángulo del eclipse (°, vacío = seguir)', 'Dirección del brillo del eclipse en grados (0 = derecha, sentido antihorario). Déjalo vacío para girar el brillo hacia la entidad con más divergencia.', 'Seguir'],
       eclipse_intensity: ['Intensidad del eclipse', 'Brillo de la media luna del eclipse y de su corona.'],
@@ -767,6 +782,7 @@ const TRANSLATIONS = {
       state: 'Status', divergenceOf: 'Divergentie van {state}', removeState: '{state} verwijderen'
     },
     sections: {
+      title: "Titel", title_hint: "De ondertitel ondersteunt Home Assistant-sjablonen, bijvoorbeeld {{ states(\"sensor.temperature\") }} °C.",
       appearance: "Weergave", eclipse: "Eclips", peak: "Piek", strata: "Lagen en golven", ambient: "Omgevingslagen",
       divergence: "Divergentie", text: "Labeltekst", interaction: "Bediening", performance: "Prestaties",
       interaction_hint: "Tik op het midden van de ring of op een label, of houd het ingedrukt. Gebruik voor een browser_mod-pop-up de actie \"fire-dom-event\" met een browser_mod-blok in YAML."
@@ -774,6 +790,8 @@ const TRANSLATIONS = {
     entityGroups: { source: "Entiteit", range: "Waardebereik", callout: "Label", actions: "Acties" },
     options: { theme_mode: { dark: 'Donker', light: 'Licht', auto: 'Auto' }, language: { '': 'Auto (Home Assistant)' } },
     settings: {
+      title: ["Titel", "Tekst in de linkerbovenhoek van de kaart. Leeg toont geen titel."],
+      subtitle: ["Ondertitel", "Tekst onder de titel. Ondersteunt Home Assistant-sjablonen, bijvoorbeeld {{ states(\"sensor.outside_temperature\") }}; de kaart werkt hem bij als het resultaat verandert."],
       theme_mode: ['Thema', 'Donker toont een nachtelijke eclips, licht toont inkt op papier. Auto volgt de donkere modus van Home Assistant.'],
       eclipse_angle: ['Eclipshoek (°, leeg = volgen)', 'Richting van de eclipsgloed in graden (0 = rechts, tegen de klok in). Laat leeg om de gloed naar de entiteit met de meeste divergentie te draaien.', 'Volgen'],
       eclipse_intensity: ['Eclipsintensiteit', 'Helderheid van de eclipssikkel en zijn corona.'],
@@ -834,6 +852,7 @@ const TRANSLATIONS = {
       state: 'Stato', divergenceOf: 'Divergenza di {state}', removeState: 'Rimuovi {state}'
     },
     sections: {
+      title: "Titolo", title_hint: "Il sottotitolo supporta i template di Home Assistant, per esempio {{ states(\"sensor.temperature\") }} °C.",
       appearance: "Aspetto", eclipse: "Eclissi", peak: "Picco", strata: "Strati e onde", ambient: "Strati ambientali",
       divergence: "Divergenza", text: "Testo delle etichette", interaction: "Interazione", performance: "Prestazioni",
       interaction_hint: "Tocca o tieni premuto il centro dell'anello o un'etichetta. Per un popup browser_mod usa l'azione \"fire-dom-event\" con un blocco browser_mod in YAML."
@@ -841,6 +860,8 @@ const TRANSLATIONS = {
     entityGroups: { source: "Entità", range: "Intervallo di valori", callout: "Etichetta", actions: "Azioni" },
     options: { theme_mode: { dark: 'Scuro', light: 'Chiaro', auto: 'Auto' }, language: { '': 'Auto (Home Assistant)' } },
     settings: {
+      title: ["Titolo", "Testo nell'angolo in alto a sinistra della scheda. Vuoto non mostra alcun titolo."],
+      subtitle: ["Sottotitolo", "Testo sotto il titolo. Supporta i template di Home Assistant, per esempio {{ states(\"sensor.outside_temperature\") }}; la scheda lo aggiorna quando il risultato cambia."],
       theme_mode: ['Tema', "Scuro mostra un'eclissi notturna, chiaro mostra inchiostro su carta. Auto segue la modalità scura di Home Assistant."],
       eclipse_angle: ["Angolo dell'eclissi (°, vuoto = segui)", "Direzione del bagliore dell'eclissi in gradi (0 = destra, senso antiorario). Lascia vuoto per girare il bagliore verso l'entità con la divergenza maggiore.", 'Segui'],
       eclipse_intensity: ["Intensità dell'eclissi", "Luminosità della falce dell'eclissi e della sua corona."],
@@ -1214,6 +1235,12 @@ class RehoboamCardEditor extends HTMLElement {
         return `<div class="checkbox-row">
           <input class="set-check" id="f-${st.key}" data-key="${st.key}" type="checkbox" ${value !== false && (value || st.default) ? 'checked' : ''} />
           <label for="f-${st.key}">${esc(st.label)}</label>${tipIcon(st.tip)}</div>`;
+      case 'template':
+        // Home Assistant's template editor when it is loaded, else a plain text area
+        return `<div class="field" style="grid-column: span 2;">${label}
+          ${customElements.get('ha-selector')
+            ? `<ha-selector class="tpl-sel" data-key="${st.key}"></ha-selector>`
+            : `<textarea class="set-input" data-key="${st.key}" rows="2" placeholder="${esc(st.placeholder || '')}">${esc(value)}</textarea>`}</div>`;
       case 'entity':
         return `<div class="field" style="grid-column: span 2;">${label}
           ${hasEntityPicker
@@ -1374,7 +1401,7 @@ class RehoboamCardEditor extends HTMLElement {
           font-size: 12px;
           color: var(--secondary-text-color, #9b9b9b);
         }
-        input, select {
+        input, select, textarea {
           padding: 8px 10px;
           border-radius: 6px;
           border: 1px solid var(--divider-color, rgba(255,255,255,0.2));
@@ -1613,6 +1640,19 @@ class RehoboamCardEditor extends HTMLElement {
     root.querySelectorAll('.set-input').forEach(inp => {
       inp.addEventListener('change', e => this._onGlobalChange(inp.dataset.key, e.target.value));
     });
+    // Template editors send every keystroke; the config goes out once typing pauses
+    root.querySelectorAll('.tpl-sel').forEach(sel => {
+      const key = sel.dataset.key;
+      sel.selector = { template: {} };
+      if (this._hass) sel.hass = this._hass;
+      sel.value = c[key] || '';
+      sel.addEventListener('value-changed', e => {
+        e.stopPropagation();
+        sel.value = e.detail.value;
+        clearTimeout(this._templateTimer);
+        this._templateTimer = setTimeout(() => this._onGlobalChange(key, e.detail.value), 400);
+      });
+    });
     root.querySelectorAll('.set-check').forEach(chk => {
       chk.addEventListener('change', e => this._onGlobalChange(chk.dataset.key, e.target.checked));
     });
@@ -1788,6 +1828,8 @@ class RehoboamCard extends HTMLElement {
     this._config = {
       theme_mode: ['light', 'auto'].includes(themeMode) ? themeMode : 'dark',
       font_family: config.font_family ? String(config.font_family) : DEFAULT_FONT,
+      title: config.title ? String(config.title) : '',
+      subtitle: config.subtitle ? String(config.subtitle) : '',
       language: config.language ? String(config.language) : null,
       monitoring_label: config.monitoring_label ? String(config.monitoring_label) : null,
       divergence_label: config.divergence_label ? String(config.divergence_label) : null,
@@ -1828,6 +1870,8 @@ class RehoboamCard extends HTMLElement {
     ensureLabelFont(this._config.font_family);
     this._initEntities();
     this._ensureDOM();
+    this._setTitleText(this._titleEl, this._config.title);
+    this._syncSubtitle();
     this._applyThemeStyles();
     this._buildHUD();
     this._syncUniforms();
@@ -1918,6 +1962,8 @@ class RehoboamCard extends HTMLElement {
       this._syncUniforms();
     }
 
+    this._syncSubtitle();
+
     // Callout text and value format follow the card language, else the Home Assistant language
     const L = i18n(this._config.language || (hass.locale && hass.locale.language) || hass.language);
     this._i18n = L;
@@ -1998,6 +2044,47 @@ class RehoboamCard extends HTMLElement {
     }
   }
 
+  _setTitleText(el, text) {
+    if (!el) return;
+    if (el.textContent !== text) el.textContent = text;
+    if (this._titleBlock) this._titleBlock.hidden = !this._titleEl.textContent && !this._subtitleEl.textContent;
+  }
+
+  // Subtitle: plain text, or a Home Assistant template. Home Assistant renders the template and
+  // sends a new result whenever it changes (render_template subscription); the card only writes
+  // the text when it arrives.
+  _syncSubtitle() {
+    const source = (this._config && this._config.subtitle) || '';
+    const isTemplate = /\{\{|\{%/.test(source);
+    const canRender = isTemplate && this.isConnected && this._hass && this._hass.connection;
+    if (canRender && this._subtitleKey === source) return;
+    this._unsubscribeSubtitle();
+    if (!isTemplate || !canRender) {
+      this._setTitleText(this._subtitleEl, isTemplate ? '' : source);
+      return;
+    }
+    const key = source;
+    this._subtitleKey = key;
+    const user = this._hass.user ? this._hass.user.name : '';
+    const unsub = this._hass.connection.subscribeMessage(msg => {
+      if (this._subtitleKey !== key || !msg) return;
+      if ('result' in msg) this._setTitleText(this._subtitleEl, msg.result == null ? '' : String(msg.result));
+      else if (msg.error) console.warn(`Rehoboam card: subtitle template: ${msg.error}`);
+    }, { type: 'render_template', template: source, variables: { user }, strict: false, report_errors: true });
+    this._subtitleUnsub = unsub;
+    Promise.resolve(unsub).catch(err => {
+      if (this._subtitleKey === key) this._setTitleText(this._subtitleEl, '');
+      console.warn('Rehoboam card: subtitle template failed', (err && err.message) || err);
+    });
+  }
+
+  _unsubscribeSubtitle() {
+    const unsub = this._subtitleUnsub;
+    this._subtitleUnsub = null;
+    this._subtitleKey = null;
+    if (unsub) Promise.resolve(unsub).then(fn => { if (typeof fn === 'function') fn(); }).catch(() => {});
+  }
+
   // Callout value: Home Assistant's own format (localized numbers and states) where it exists.
   // A unit override keeps the localized number and replaces the unit.
   _formatValue(hass, stateObj, ent, L) {
@@ -2042,6 +2129,10 @@ class RehoboamCard extends HTMLElement {
         <div class="viewport" id="vp">
           <canvas id="gl-canvas"></canvas>
           <svg class="hud" id="hud-svg" preserveAspectRatio="xMidYMid meet"></svg>
+          <div class="title-block" id="title-block" hidden>
+            <div class="card-title" id="card-title"></div>
+            <div class="card-subtitle" id="card-subtitle"></div>
+          </div>
           <div class="gl-error" id="gl-error" hidden>
             Rehoboam card: WebGL is not available in this browser.
           </div>
@@ -2054,6 +2145,9 @@ class RehoboamCard extends HTMLElement {
     this._svg = this.shadowRoot.getElementById('hud-svg');
     this._vp = this.shadowRoot.getElementById('vp');
     this._glErrorEl = this.shadowRoot.getElementById('gl-error');
+    this._titleBlock = this.shadowRoot.getElementById('title-block');
+    this._titleEl = this.shadowRoot.getElementById('card-title');
+    this._subtitleEl = this.shadowRoot.getElementById('card-subtitle');
 
     this._canvas.addEventListener('webglcontextlost', e => {
       // preventDefault is required for the context to be restorable
@@ -2130,6 +2224,38 @@ class RehoboamCard extends HTMLElement {
         height: 100%;
         overflow: visible;
         pointer-events: none;
+      }
+      .title-block {
+        position: absolute;
+        top: 14px;
+        left: 16px;
+        max-width: 55%;
+        pointer-events: none;
+        font-family: ${this._config.font_family};
+      }
+      .title-block[hidden] {
+        display: none;
+      }
+      .card-title {
+        color: ${textCol};
+        font-size: ${Math.round(labelMetrics(this._config.font_size).header * 1.6)}px;
+        font-weight: 600;
+        letter-spacing: 2px;
+        line-height: 1.15;
+        text-transform: uppercase;
+      }
+      .card-subtitle {
+        margin-top: 3px;
+        color: ${subCol};
+        font-size: ${labelMetrics(this._config.font_size).sub + 1}px;
+        font-weight: 500;
+        letter-spacing: 1px;
+        line-height: 1.3;
+        white-space: pre-line;
+      }
+      .card-title:empty,
+      .card-subtitle:empty {
+        display: none;
       }
       .gl-error {
         position: absolute;
@@ -2303,9 +2429,11 @@ class RehoboamCard extends HTMLElement {
 
     this._inViewport = true;
     this._updateRunningState();
+    this._syncSubtitle();
   }
 
   disconnectedCallback() {
+    this._unsubscribeSubtitle();
     if (this._rafId) cancelAnimationFrame(this._rafId);
     this._rafId = null;
     if (this._resizeTimer) {

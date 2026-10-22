@@ -21,7 +21,7 @@ const context = vm.createContext({
 vm.runInContext(readFileSync(new URL('lovelace-rehoboam.js', root), 'utf8'), context);
 const { sections, card, entity, entityGroups } = registry.get('lovelace-rehoboam-editor').settings;
 
-const TYPES = { number: 'number', plain: 'number', threshold: 'number', select: 'string', text: 'string', entity: 'string', bool: 'boolean', action: 'action', map: 'object' };
+const TYPES = { number: 'number', plain: 'number', threshold: 'number', select: 'string', text: 'string', entity: 'string', bool: 'boolean', action: 'action', map: 'object', template: 'template' };
 const code = v => `\`${v}\``;
 const cell = text => String(text).replace(/\|/g, '\\|');
 
