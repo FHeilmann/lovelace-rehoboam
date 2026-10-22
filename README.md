@@ -52,7 +52,7 @@ A WebGL custom Lovelace card inspired by the **Westworld Rehoboam** AI system. I
 ## Configuration
 
 ### Playground
-The [playground](https://fheilmann.github.io/lovelace-rehoboam/) runs the card in your browser with example sensors. Change the settings, replace the example entities with your own, then click **Copy YAML** and paste the result into a manual card. **Copy share link** gives a link that opens the playground with your current settings.
+The [playground](https://fheilmann.github.io/lovelace-rehoboam/) runs the card in your browser with example sensors. Change the settings, replace the example entities with your own, then click **Copy YAML** and paste the result into a manual card. **Share link** copies a link that opens the playground with your current settings.
 
 ### Visual Editor
 1. In your Lovelace dashboard, click **Edit Dashboard** > **Add Card**.
