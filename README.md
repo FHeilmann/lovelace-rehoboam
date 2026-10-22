@@ -122,7 +122,7 @@ Each entity has a divergence between 0 (at `baseline`) and 1 (at `critical`). It
 | Monitoring | Divergence is at or above the monitoring threshold and below the divergence threshold. |
 | Divergence | Divergence is at or above the divergence threshold. |
 
-The card-level `monitoring_threshold` and `divergence_threshold` are fractions (`0.0` – `1.0`) of the range between baseline and critical. The entity-level thresholds are values in the sensor's own unit, for example `70` for 70% humidity. They work in both directions. Without any monitoring threshold there is no monitoring state, and the callout is hidden below the divergence threshold.
+The card-level `monitoring_threshold` and `divergence_threshold` are fractions (`0.0` – `1.0`) of the range between baseline and critical. The entity-level thresholds are values in the sensor's own unit, for example `70` for 70% humidity. They work in both directions. For an entity with a `state_map`, the entity-level thresholds are divergence values (`0.0` – `1.0`) instead, the same scale as the map. Without any monitoring threshold there is no monitoring state, and the callout is hidden below the divergence threshold.
 
 ---
 
@@ -180,12 +180,12 @@ The editor, the playground and these tables use the same settings list in `lovel
 | `category` | string | `SYSTEM ANOMALY` |  | Header text above the label, for example THERMAL VARIANCE. |
 | `baseline` | number | `0` |  | Value at which the entity is calm (divergence 0). |
 | `critical` | number | `100` |  | Value at which the entity is fully diverged (divergence 1). If it is below the baseline, lower values diverge. |
+| `state_map` | object | none | state: `0` – `1` | Divergence (0-1) for each listed state, for example home 0 and not_home 1. A listed state ignores baseline and critical. With a map, the entity thresholds are divergence values (0-1). |
 | `unit` | string | Entity unit |  | Unit shown after the value. Empty uses the unit of the entity. |
 | `angle` | number | auto-spaced | `0` – `360` | Position of the callout on the ring in degrees (0 = right, counter-clockwise). Leave empty to space the callouts evenly. |
-| `monitoring_threshold` | number | card setting | baseline – critical | Sensor value where this callout appears as MONITORING. Leave empty to use the card setting. |
-| `divergence_threshold` | number | card setting | baseline – critical | Sensor value where this callout changes to DIVERGENCE. Leave empty to use the card setting. |
+| `monitoring_threshold` | number | card setting | baseline – critical, or `0` – `1` with a state map | Sensor value where this callout appears as MONITORING; with a state map, a divergence value (0-1). Leave empty to use the card setting. |
+| `divergence_threshold` | number | card setting | baseline – critical, or `0` – `1` with a state map | Sensor value where this callout changes to DIVERGENCE; with a state map, a divergence value (0-1). Leave empty to use the card setting. |
 | `always_visible` | boolean | `false` |  | Show the callout as MONITORING also when it would be hidden. |
-| `state_map` | object | none |  | YAML only: map of raw states to divergence values (0-1), for example "on": 1 and "off": 0. Use it for entities without a numeric state. |
 | `tap_action` | action | `more-info` |  | Action when you tap this callout. The default opens more-info. |
 | `hold_action` | action | `none` |  | Action when you press and hold this callout. |
 <!-- END entity-options -->

@@ -482,7 +482,8 @@ const CARD_SETTINGS = [
     tip: 'Frame rate while an entity diverges or a value changes.' }
 ];
 // Entity settings, in editor order. 'plain' is a number box without a slider (no fixed range);
-// 'threshold' is a slider that spans baseline to critical; 'map' is set in YAML only.
+// 'threshold' is a slider that spans baseline to critical (0-1 with a state map); 'map' is a list
+// of state -> divergence rows.
 const ENTITY_SETTINGS = [
   { key: 'entity', type: 'entity', label: 'Entity ID', required: true, placeholder: 'sensor.living_room_temperature',
     tip: 'Home Assistant entity that drives this callout.' },
@@ -494,23 +495,26 @@ const ENTITY_SETTINGS = [
     tip: 'Value at which the entity is calm (divergence 0).' },
   { key: 'critical', type: 'plain', label: 'Critical (divergence 1)', default: 100,
     tip: 'Value at which the entity is fully diverged (divergence 1). If it is below the baseline, lower values diverge.' },
+  { key: 'state_map', type: 'map', label: 'State map', defaultText: 'none',
+    tip: 'Divergence (0-1) for each listed state, for example home 0 and not_home 1. A listed state ignores baseline and critical. With a map, the entity thresholds are divergence values (0-1).' },
   { key: 'unit', type: 'text', label: 'Unit', placeholder: 'Unit of the entity', defaultText: 'Entity unit',
     tip: 'Unit shown after the value. Empty uses the unit of the entity.' },
   { key: 'angle', type: 'number', label: 'Angle (°, empty = auto)', min: 0, max: 360, step: 1, nullable: true, placeholder: 'Auto', defaultText: 'auto-spaced',
     tip: 'Position of the callout on the ring in degrees (0 = right, counter-clockwise). Leave empty to space the callouts evenly.' },
-  { key: 'monitoring_threshold', type: 'threshold', label: 'Monitoring threshold (sensor value)', nullable: true, placeholder: 'Card setting', defaultText: 'card setting',
-    tip: 'Sensor value where this callout appears as MONITORING. Leave empty to use the card setting.' },
-  { key: 'divergence_threshold', type: 'threshold', label: 'Divergence threshold (sensor value)', nullable: true, placeholder: 'Card setting', defaultText: 'card setting',
-    tip: 'Sensor value where this callout changes to DIVERGENCE. Leave empty to use the card setting.' },
+  { key: 'monitoring_threshold', type: 'threshold', label: 'Monitoring threshold (sensor value)', mapLabel: 'Monitoring threshold (0–1)',
+    nullable: true, placeholder: 'Card setting', defaultText: 'card setting',
+    tip: 'Sensor value where this callout appears as MONITORING; with a state map, a divergence value (0-1). Leave empty to use the card setting.' },
+  { key: 'divergence_threshold', type: 'threshold', label: 'Divergence threshold (sensor value)', mapLabel: 'Divergence threshold (0–1)',
+    nullable: true, placeholder: 'Card setting', defaultText: 'card setting',
+    tip: 'Sensor value where this callout changes to DIVERGENCE; with a state map, a divergence value (0-1). Leave empty to use the card setting.' },
   { key: 'always_visible', type: 'bool', label: 'Always visible callout', default: false,
     tip: 'Show the callout as MONITORING also when it would be hidden.' },
-  { key: 'state_map', type: 'map', label: 'State map', yamlOnly: true, defaultText: 'none',
-    tip: 'YAML only: map of raw states to divergence values (0-1), for example "on": 1 and "off": 0. Use it for entities without a numeric state.' },
   { key: 'tap_action', type: 'action', label: 'Tap action', defaultText: 'more-info',
     tip: 'Action when you tap this callout. The default opens more-info.' },
   { key: 'hold_action', type: 'action', label: 'Hold action', defaultText: 'none',
     tip: 'Action when you press and hold this callout.' }
 ];
+const hasStateMap = ent => Boolean(ent && ent.state_map && typeof ent.state_map === 'object' && Object.keys(ent.state_map).length);
 const SETTING = Object.fromEntries(CARD_SETTINGS.map(st => [st.key, st]));
 const settingUnsetAt = (st, config) => (typeof st.unsetAt === 'function' ? st.unsetAt(config) : st.unsetAt ?? st.default ?? st.min);
 
@@ -679,8 +683,10 @@ class RehoboamCardEditor extends HTMLElement {
 
   // Entity thresholds are sensor values, so their sliders span baseline..critical
   _thresholdBounds(ent) {
-    const base = Number.isFinite(Number(ent.baseline)) && ent.baseline !== '' ? Number(ent.baseline) : 0;
-    const crit = Number.isFinite(Number(ent.critical)) && ent.critical !== '' ? Number(ent.critical) : 100;
+    // With a state map the thresholds are divergence values, so the sliders span 0..1
+    const mapped = hasStateMap(ent);
+    const base = mapped ? 0 : Number.isFinite(Number(ent.baseline)) && ent.baseline !== '' ? Number(ent.baseline) : 0;
+    const crit = mapped ? 1 : Number.isFinite(Number(ent.critical)) && ent.critical !== '' ? Number(ent.critical) : 100;
     const lo = Math.min(base, crit);
     const hi = Math.max(base, crit);
     const span = hi - lo;
@@ -804,7 +810,7 @@ class RehoboamCardEditor extends HTMLElement {
           idx, value, placeholder: st.placeholder, unsetAt: st.key === 'angle' ? this._autoAngle(idx) : st.min, tip: st.tip
         });
       case 'threshold':
-        return this._rangeField(esc(st.label), st.key, tb.lo, tb.hi, tb.step, {
+        return this._rangeField(esc(hasStateMap(ent) ? st.mapLabel : st.label), st.key, tb.lo, tb.hi, tb.step, {
           idx, value, placeholder: st.placeholder, cls: 'ent-threshold', tip: st.tip,
           unsetAt: st.key === 'divergence_threshold' ? tb.divAt : tb.monAt
         });
@@ -814,9 +820,62 @@ class RehoboamCardEditor extends HTMLElement {
           <label for="chk-${idx}-${st.key}">${esc(st.label)}</label>${tipIcon(st.tip)}</div>`;
       case 'action':
         return this._actionField(esc(st.label), 'entity', st.key, idx, st.tip);
+      case 'map': {
+        const entries = Object.entries(value && typeof value === 'object' ? value : {});
+        return `<div class="field map-field" data-idx="${idx}" style="grid-column: span 2;">${label}
+          ${entries.map(([state, v]) => `<div class="map-row">
+            <input class="map-state" type="text" value="${esc(state)}" placeholder="state" aria-label="State" />
+            <input class="map-rng" type="range" min="0" max="1" step="0.05" value="${esc(v)}" aria-label="Divergence of ${esc(state)}" />
+            <input class="map-num" type="number" min="0" max="1" step="0.05" value="${esc(v)}" aria-label="Divergence of ${esc(state)}" />
+            <button class="btn btn-danger map-del" type="button" aria-label="Remove ${esc(state)}">×</button>
+          </div>`).join('')}
+          <div><button class="btn map-add" type="button">+ Add state</button></div>
+        </div>`;
+      }
       default:
         return '';
     }
+  }
+
+  // Rebuilds an entity's state map from its rows; empty state names are left out
+  _readStateMap(field) {
+    const map = {};
+    field.querySelectorAll('.map-row').forEach(row => {
+      const state = row.querySelector('.map-state').value.trim();
+      const v = Number(row.querySelector('.map-num').value);
+      if (state) map[state] = Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0;
+    });
+    return Object.keys(map).length ? map : undefined;
+  }
+
+  _bindStateMaps() {
+    this.shadowRoot.querySelectorAll('.map-field').forEach(field => {
+      const idx = Number(field.dataset.idx);
+      // Adding or removing a row (or the first or last state) changes the threshold sliders, so
+      // those re-render; edits inside a row only send the config.
+      const emit = rerender => {
+        const before = hasStateMap(this._config.entities[idx]);
+        this._onEntityChange(idx, 'state_map', this._readStateMap(field), 'object');
+        if (rerender || before !== hasStateMap(this._config.entities[idx])) this._render();
+      };
+      field.querySelectorAll('.map-row').forEach(row => {
+        const rng = row.querySelector('.map-rng');
+        const num = row.querySelector('.map-num');
+        rng.addEventListener('input', () => { num.value = rng.value; });
+        rng.addEventListener('change', () => emit(false));
+        num.addEventListener('change', () => { rng.value = num.value; emit(false); });
+        row.querySelector('.map-state').addEventListener('change', () => emit(false));
+        row.querySelector('.map-del').addEventListener('click', () => { row.remove(); emit(true); });
+      });
+      field.querySelector('.map-add').addEventListener('click', () => {
+        const map = { ...(this._config.entities[idx].state_map || {}) };
+        let name = 'new_state';
+        for (let n = 2; name in map; n++) name = `new_state_${n}`;
+        map[name] = 1;
+        this._onEntityChange(idx, 'state_map', map, 'object');
+        this._render();
+      });
+    });
   }
 
   // ha-selector with { ui_action: {} } is Home Assistant's own action picker
@@ -1026,6 +1085,32 @@ class RehoboamCardEditor extends HTMLElement {
         .checkbox-row {
           position: relative;
         }
+        .map-row {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-bottom: 6px;
+        }
+        .map-row .map-state {
+          flex: 1 1 35%;
+          min-width: 0;
+        }
+        .map-row .map-rng {
+          flex: 1 1 45%;
+          min-width: 0;
+          padding: 0;
+          border: none;
+          background: transparent;
+          accent-color: var(--primary-color, #03a9f4);
+        }
+        .map-row .map-num {
+          flex: 0 0 64px;
+          width: 64px;
+        }
+        .map-row .map-del {
+          flex: none;
+          padding: 4px 9px;
+        }
       </style>
 
       ${SETTING_SECTIONS.map(sec => `
@@ -1083,6 +1168,7 @@ class RehoboamCardEditor extends HTMLElement {
       chk.addEventListener('change', e => this._onGlobalChange(chk.dataset.key, e.target.checked));
     });
     this._bindRangeRows();
+    this._bindStateMaps();
 
     // Bind Add / Remove Entity buttons
     root.getElementById('btn-add-entity').addEventListener('click', () => this._addEntity());
@@ -1325,16 +1411,15 @@ class RehoboamCard extends HTMLElement {
       const base = Number.isFinite(baseline) ? baseline : 0;
       const crit = Number.isFinite(critical) ? critical : 100;
       // Callout thresholds as fractions between baseline and critical. Per entity they are given
-      // in the sensor's own units (direction-aware); the global values (0-1) are the fallbacks.
-      // Without a monitoring threshold there is no monitoring band: below the divergence
-      // threshold the callout is hidden.
+      // in the sensor's own units (direction-aware), or with a state map as divergence values
+      // (0-1); the global values (0-1) are the fallbacks. Without a monitoring threshold there is
+      // no monitoring band: below the divergence threshold the callout is hidden.
+      const toFraction = v => (hasStateMap(conf) ? Math.max(0, Math.min(1, v)) : computeDirectionalDivergence(v, base, crit));
       const divValue = toNum(conf.divergence_threshold);
       const monValue = toNum(conf.monitoring_threshold);
-      const divergeAt = Number.isFinite(divValue)
-        ? computeDirectionalDivergence(divValue, base, crit)
-        : this._config.divergence_threshold;
+      const divergeAt = Number.isFinite(divValue) ? toFraction(divValue) : this._config.divergence_threshold;
       const monitorAt = Math.min(divergeAt, Number.isFinite(monValue)
-        ? computeDirectionalDivergence(monValue, base, crit)
+        ? toFraction(monValue)
         : (this._config.monitoring_threshold ?? divergeAt));
       // Stable per-entity sweep direction for the spike's longer flank
       let hash = 0;
