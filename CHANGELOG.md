@@ -1,5 +1,15 @@
 # Changelog
 
+## [2026.10.2](https://github.com/FHeilmann/lovelace-rehoboam/compare/2026.10.1...2026.10.2) (2026-10-22)
+
+
+### Documentation
+
+* add a Ko-fi support link ([98309a3](https://github.com/FHeilmann/lovelace-rehoboam/commit/98309a384bdefd3dc1447a46035d805a0b195f55))
+* make the Ko-fi link a thank-you only ([e362191](https://github.com/FHeilmann/lovelace-rehoboam/commit/e362191c13603c43788c2be525eca44b9eb0c2cd))
+* show the release without a "v" and refresh the license badge ([01b1b5a](https://github.com/FHeilmann/lovelace-rehoboam/commit/01b1b5aeadd861b8c22c1c8913bcbe096d2c7cf0))
+* use absolute image and license links so HACS shows them ([d198750](https://github.com/FHeilmann/lovelace-rehoboam/commit/d198750ad75904521195964d8bbb950afc2d3063))
+
 ## [2026.10.1](https://github.com/FHeilmann/lovelace-rehoboam/compare/2026.10.0...2026.10.1) (2026-10-22)
 
 
