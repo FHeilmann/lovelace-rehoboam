@@ -47,6 +47,8 @@ input[type=number],input[type=text],select{padding:4px 6px;background:var(--fiel
 .btn.add{display:block;width:100%;margin:8px 0 4px;border-style:dashed;background:transparent;color:var(--accent)}
 .sim{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:6px 0}
 .sim>span{flex:0 0 100%;color:var(--muted)}
+.hint{margin:0 0 6px;font-size:11.5px;color:var(--muted)}
+.subhead{margin:14px 0 4px;padding-bottom:3px;border-bottom:1px solid var(--line);font-size:10.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}
 .maprow{margin:4px 0 6px}
 .maprow input[type=text]{flex:0 0 33%;min-width:0}
 .maprow input[type=number]{width:54px}
@@ -548,7 +550,12 @@ function renderEntities() {
     const thresholds = [];
     const pairs = { name: 'category', baseline: 'critical' };
     let pairBox = null;
+    let group = null;
     SETTINGS.entity.forEach(st => {
+      if (st.group !== group) {
+        group = st.group;
+        box.appendChild(el('div', 'subhead', (SETTINGS.entityGroups.find(g => g.id === group) || {}).title || ''));
+      }
       let parent = box;
       if (pairs[st.key]) { pairBox = el('div', 'pair'); box.appendChild(pairBox); parent = pairBox; }
       else if (pairBox && Object.values(pairs).includes(st.key)) { parent = pairBox; pairBox = null; }
@@ -646,6 +653,7 @@ function buildPanel() {
   const onThreshold = () => { refreshThresholds(); apply(); };
   SETTINGS.sections.forEach(sec => {
     heading(panel, sec.title);
+    if (sec.hint) panel.appendChild(el('p', 'hint', sec.hint));
     SETTINGS.card.filter(st => st.section === sec.id).forEach(st => {
       const opts = { tip: st.tip };
       switch (st.type) {

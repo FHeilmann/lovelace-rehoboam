@@ -19,7 +19,7 @@ const context = vm.createContext({
   navigator: {}
 });
 vm.runInContext(readFileSync(new URL('lovelace-rehoboam.js', root), 'utf8'), context);
-const { card, entity } = registry.get('lovelace-rehoboam-editor').settings;
+const { sections, card, entity, entityGroups } = registry.get('lovelace-rehoboam-editor').settings;
 
 const TYPES = { number: 'number', plain: 'number', threshold: 'number', select: 'string', text: 'string', entity: 'string', bool: 'boolean', action: 'action', map: 'object' };
 const code = v => `\`${v}\``;
@@ -45,10 +45,14 @@ const tables = {
   'card-options': [
     HEAD,
     `| ${code('type')} | string | **Required** | | ${code('custom:lovelace-rehoboam')} |`,
-    ...card.map(row),
+    // One header row per section, in the order of the editor
+    ...sections.flatMap(sec => [`| **${sec.title}** | | | | |`, ...card.filter(st => st.section === sec.id).map(row)]),
     `| ${code('entities')} | list | ${code('[]')} | | Entity IDs or entity option objects, see [Entity Options](#entity-options). |`
   ].join('\n'),
-  'entity-options': [HEAD, ...entity.map(row)].join('\n')
+  'entity-options': [
+    HEAD,
+    ...entityGroups.flatMap(g => [`| **${g.title}** | | | | |`, ...entity.filter(st => st.group === g.id).map(row)])
+  ].join('\n')
 };
 
 const readme = readFileSync(readmeUrl, 'utf8');

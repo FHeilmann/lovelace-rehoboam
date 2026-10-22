@@ -401,43 +401,52 @@ function roundToStep(value, step) {
 // box), select, text, bool, entity, action. An empty nullable number means "not set"; its slider
 // then rests at unsetAt (a number, or a function of the config).
 const SETTING_SECTIONS = [
-  { id: 'theme', title: 'Theme and eclipse' },
-  { id: 'waves', title: 'Waves and strata' },
+  { id: 'appearance', title: 'Appearance' },
+  { id: 'eclipse', title: 'Eclipse' },
+  { id: 'peak', title: 'Peak' },
+  { id: 'strata', title: 'Strata and waves' },
   { id: 'ambient', title: 'Ambient strata' },
-  { id: 'callouts', title: 'Callouts' },
-  { id: 'centre', title: 'Ring centre', hint: 'Tap or hold the centre of the ring. For a browser_mod popup use the action "fire-dom-event" with a browser_mod block in YAML.' },
-  { id: 'layout', title: 'Layout and performance' }
+  { id: 'divergence', title: 'Divergence' },
+  { id: 'text', title: 'Callout text' },
+  { id: 'interaction', title: 'Interaction', hint: 'Tap or hold the centre of the ring or a callout. For a browser_mod popup use the action "fire-dom-event" with a browser_mod block in YAML.' },
+  { id: 'performance', title: 'Performance' }
 ];
 const CARD_SETTINGS = [
-  { key: 'theme_mode', section: 'theme', type: 'select', label: 'Theme', default: 'dark',
+  { key: 'theme_mode', section: 'appearance', type: 'select', label: 'Theme', default: 'dark',
     options: [['dark', 'Dark'], ['light', 'Light'], ['auto', 'Auto']],
     tip: 'Dark shows a night eclipse, light shows ink on paper. Auto follows the dark mode setting of Home Assistant.' },
-  { key: 'eclipse_angle', section: 'theme', type: 'number', label: 'Eclipse angle (°, empty = follow)', min: 0, max: 360, step: 1,
+  { key: 'height', section: 'appearance', type: 'text', label: 'Card height (CSS)', default: DEFAULT_HEIGHT, placeholder: '500px, 60vh, ...',
+    tip: 'Card height in CSS units, for example 500px, or 100vh for a full-screen panel view.' },
+  { key: 'ring_scale', section: 'appearance', type: 'number', label: 'Ring scale', min: 0.2, max: 0.9, step: 0.01, default: 0.42,
+    tip: 'Ring radius relative to the card size.' },
+
+  { key: 'eclipse_angle', section: 'eclipse', type: 'number', label: 'Eclipse angle (°, empty = follow)', min: 0, max: 360, step: 1,
     nullable: true, unsetAt: 180, placeholder: 'Follow', yamlType: 'number or auto', defaultText: 'auto',
     tip: 'Direction of the eclipse glow in degrees (0 = right, counter-clockwise). Leave empty to turn the glow toward the entity with the most divergence.' },
-  { key: 'eclipse_intensity', section: 'theme', type: 'number', label: 'Eclipse intensity', min: 0, max: 2, step: 0.05, default: 1,
+  { key: 'eclipse_intensity', section: 'eclipse', type: 'number', label: 'Eclipse intensity', min: 0, max: 2, step: 0.05, default: 1,
     tip: 'Brightness of the eclipse crescent and its corona.' },
-  { key: 'ray_intensity', section: 'theme', type: 'number', label: 'Corona rays', min: 0, max: 1, step: 0.05, default: 0.35,
+  { key: 'ray_intensity', section: 'eclipse', type: 'number', label: 'Corona rays', min: 0, max: 1, step: 0.05, default: 0.35,
     tip: 'Strength of the thin rays that shimmer outward from the ring.' },
-  { key: 'test_divergence', section: 'theme', type: 'number', label: 'Test divergence (empty = live)', min: 0, max: 1, step: 0.01,
+  { key: 'test_divergence', section: 'eclipse', type: 'number', label: 'Test divergence (empty = live)', min: 0, max: 1, step: 0.01,
     nullable: true, unsetAt: 0, placeholder: 'Live', defaultText: 'none',
     tip: 'Preview only: forces the eclipse glow to this divergence. Leave empty to use the live values.' },
 
-  { key: 'amplitude_scale', section: 'waves', type: 'number', label: 'Wave amplitude scale', min: 0.1, max: 3, step: 0.05, default: 1.25,
-    tip: 'Height multiplier for all waves and strata.' },
-  { key: 'peak_width', section: 'waves', type: 'number', label: 'Peak width', min: 0.4, max: 3, step: 0.05, default: 1,
+  { key: 'peak_width', section: 'peak', type: 'number', label: 'Peak width', min: 0.4, max: 3, step: 0.05, default: 1,
     tip: 'Width of the peak that rises above a diverging entity.' },
-  { key: 'peak_sharpness', section: 'waves', type: 'number', label: 'Peak sharpness (0 = dome, 1 = point)', min: 0, max: 1, step: 0.05, default: 0,
+  { key: 'peak_sharpness', section: 'peak', type: 'number', label: 'Peak sharpness (0 = dome, 1 = point)', min: 0, max: 1, step: 0.05, default: 0,
     tip: 'Shape of the peak: 0 is a flat-topped dome, 1 is a pointed tip.' },
-  { key: 'peak_height', section: 'waves', type: 'number', label: 'Peak prominence', min: 0.3, max: 1.43, step: 0.01, default: 1,
+  { key: 'peak_height', section: 'peak', type: 'number', label: 'Peak prominence', min: 0.3, max: 1.43, step: 0.01, default: 1,
     tip: 'How far the peak stands out above the strata below it.' },
-  { key: 'strata_width', section: 'waves', type: 'number', label: 'Strata width', min: 0.3, max: 2.5, step: 0.05, default: 1,
+
+  { key: 'amplitude_scale', section: 'strata', type: 'number', label: 'Wave amplitude scale', min: 0.1, max: 3, step: 0.05, default: 1.25,
+    tip: 'Height multiplier for all waves and strata.' },
+  { key: 'strata_width', section: 'strata', type: 'number', label: 'Strata width', min: 0.3, max: 2.5, step: 0.05, default: 1,
     tip: 'Width of the strata below each peak.' },
-  { key: 'baseline_height', section: 'waves', type: 'number', label: 'Baseline wave height (0 = flat ring)', min: 0, max: 5, step: 0.1, default: 1,
+  { key: 'baseline_height', section: 'strata', type: 'number', label: 'Baseline wave height (0 = flat ring)', min: 0, max: 5, step: 0.1, default: 1,
     tip: 'Height of the thin band of waves around the full ring. 0 gives a flat ring.' },
-  { key: 'facet_shading', section: 'waves', type: 'number', label: 'Fold shading', min: 0, max: 1, step: 0.05, default: 0.6,
+  { key: 'facet_shading', section: 'strata', type: 'number', label: 'Fold shading', min: 0, max: 1, step: 0.05, default: 0.6,
     tip: 'Strength of the fold shadows that make the strata look 3D.' },
-  { key: 'ring_shading', section: 'waves', type: 'bool', label: 'Wobbling ring shading', default: true,
+  { key: 'ring_shading', section: 'strata', type: 'bool', label: 'Wobbling ring shading', default: true,
     tip: 'Concentric shading rings that wobble inward and outward across the strata.' },
 
   { key: 'ambient_count', section: 'ambient', type: 'number', label: 'Ambient strata count', min: 0, max: 12, step: 1, default: 3,
@@ -449,76 +458,80 @@ const CARD_SETTINGS = [
   { key: 'ambient_lifetime', section: 'ambient', type: 'number', label: 'Ambient stratum lifetime (s)', min: 4, max: 300, step: 1, default: 25,
     tip: 'Seconds one ambient stratum takes to rise and fall again.' },
 
-  { key: 'divergence_threshold', section: 'callouts', type: 'number', label: 'Divergence threshold (0–1)', min: 0, max: 1, step: 0.01, default: 0.15,
+  { key: 'divergence_threshold', section: 'divergence', type: 'number', label: 'Divergence threshold (0–1)', min: 0, max: 1, step: 0.01, default: 0.15,
     tip: 'Fraction (0-1) of the way from baseline to critical where a callout changes to DIVERGENCE.' },
-  { key: 'monitoring_threshold', section: 'callouts', type: 'number', label: 'Monitoring threshold (0–1, empty = none)', min: 0, max: 1, step: 0.01,
+  { key: 'monitoring_threshold', section: 'divergence', type: 'number', label: 'Monitoring threshold (0–1, empty = none)', min: 0, max: 1, step: 0.01,
     nullable: true, unsetAt: c => c.divergence_threshold ?? 0.15, placeholder: 'None', defaultText: 'none',
     tip: 'Fraction (0-1) of the way from baseline to critical where a callout appears as MONITORING. Leave empty for no monitoring state.' },
-  { key: 'transition_tau', section: 'callouts', type: 'number', label: 'Transition smoothing (s)', min: 0.2, max: 20, step: 0.1, default: 2.2,
+  { key: 'transition_tau', section: 'divergence', type: 'number', label: 'Transition smoothing (s)', min: 0.2, max: 20, step: 0.1, default: 2.2,
     tip: 'Time constant in seconds of the smooth change when a value changes. Higher values give slower, calmer motion.' },
-  { key: 'language', section: 'callouts', type: 'select', label: 'Language', default: '', defaultText: 'auto',
+
+  { key: 'language', section: 'text', type: 'select', label: 'Language', default: '', defaultText: 'auto',
     options: [['', 'Auto (Home Assistant)'], ['en', 'English'], ['de', 'Deutsch'], ['fr', 'Français'], ['es', 'Español'], ['nl', 'Nederlands'], ['it', 'Italiano']],
     tip: 'Language of the callout text and the value format. Auto follows the Home Assistant language.' },
-  { key: 'monitoring_label', section: 'callouts', type: 'text', label: 'Monitoring text', defaultText: 'MONITORING, translated',
+  { key: 'monitoring_label', section: 'text', type: 'text', label: 'Monitoring text', defaultText: 'MONITORING, translated',
     tip: 'Text before the category on a monitoring callout. Empty uses the translation for the card language.' },
-  { key: 'divergence_label', section: 'callouts', type: 'text', label: 'Divergence text', defaultText: 'DIVERGENCE, translated',
+  { key: 'divergence_label', section: 'text', type: 'text', label: 'Divergence text', defaultText: 'DIVERGENCE, translated',
     tip: 'Text before the category on a diverging callout. Empty uses the translation for the card language.' },
-  { key: 'font_family', section: 'callouts', type: 'text', label: 'Label font (CSS font-family)', placeholder: 'Barlow Condensed (default)', defaultText: 'Barlow Condensed',
+  { key: 'font_family', section: 'text', type: 'text', label: 'Label font (CSS font-family)', placeholder: 'Barlow Condensed (default)', defaultText: 'Barlow Condensed',
     tip: 'CSS font family of the callout labels. The default Barlow Condensed loads from Google Fonts. Set a local font to keep the card offline.' },
-  { key: 'font_size', section: 'callouts', type: 'number', label: 'Label font size (px)', min: 8, max: 32, step: 0.5, default: DEFAULT_FONT_SIZE,
+  { key: 'font_size', section: 'text', type: 'number', label: 'Label font size (px)', min: 8, max: 32, step: 0.5, default: DEFAULT_FONT_SIZE,
     tip: 'Size of the callout label text in px. The leader lines and label spacing scale with it.' },
-  { key: 'hold_time', section: 'callouts', type: 'number', label: 'Hold duration (ms)', min: 150, max: 5000, step: 50, default: DEFAULT_HOLD_MS,
-    tip: 'Milliseconds a press must last to count as a hold. Applies to the centre and to the callouts.' },
 
-  { key: 'center_entity', section: 'centre', type: 'entity', label: 'Centre entity', placeholder: 'sensor.anything', defaultText: 'none',
+  { key: 'hold_time', section: 'interaction', type: 'number', label: 'Hold duration (ms)', min: 150, max: 5000, step: 50, default: DEFAULT_HOLD_MS,
+    tip: 'Milliseconds a press must last to count as a hold. Applies to the centre and to the callouts.' },
+  { key: 'center_entity', section: 'interaction', type: 'entity', label: 'Centre entity', placeholder: 'sensor.anything', defaultText: 'none',
     tip: 'Entity that the centre actions use, for example for more-info or toggle.' },
-  { key: 'center_tap_action', section: 'centre', type: 'action', label: 'Centre tap action', defaultText: 'none',
+  { key: 'center_tap_action', section: 'interaction', type: 'action', label: 'Centre tap action', defaultText: 'none',
     tip: 'Action when you tap the centre of the ring. For a browser_mod popup use fire-dom-event with a browser_mod block in YAML.' },
-  { key: 'center_hold_action', section: 'centre', type: 'action', label: 'Centre hold action', defaultText: 'none',
+  { key: 'center_hold_action', section: 'interaction', type: 'action', label: 'Centre hold action', defaultText: 'none',
     tip: 'Action when you press and hold the centre of the ring.' },
 
-  { key: 'height', section: 'layout', type: 'text', label: 'Card height (CSS)', default: DEFAULT_HEIGHT, placeholder: '500px, 60vh, ...',
-    tip: 'Card height in CSS units, for example 500px, or 100vh for a full-screen panel view.' },
-  { key: 'ring_scale', section: 'layout', type: 'number', label: 'Ring scale', min: 0.2, max: 0.9, step: 0.01, default: 0.42,
-    tip: 'Ring radius relative to the card size.' },
-  { key: 'resolution_scale', section: 'layout', type: 'number', label: 'Resolution scale', min: 0.25, max: 1, step: 0.05, default: 0.65,
+  { key: 'resolution_scale', section: 'performance', type: 'number', label: 'Resolution scale', min: 0.25, max: 1, step: 0.05, default: 0.65,
     tip: 'Render resolution relative to the screen. Lower values save GPU time on slow tablets.' },
-  { key: 'fps_idle', section: 'layout', type: 'number', label: 'Idle FPS', min: 5, max: 60, step: 1, default: 24,
+  { key: 'fps_idle', section: 'performance', type: 'number', label: 'Idle FPS', min: 5, max: 60, step: 1, default: 24,
     tip: 'Frame rate while all entities are calm.' },
-  { key: 'fps_active', section: 'layout', type: 'number', label: 'Active FPS', min: 10, max: 120, step: 1, default: 45,
+  { key: 'fps_active', section: 'performance', type: 'number', label: 'Active FPS', min: 10, max: 120, step: 1, default: 45,
     tip: 'Frame rate while an entity diverges or a value changes.' }
+];
+// Groups of the entity settings, in editor order
+const ENTITY_GROUPS = [
+  { id: 'source', title: 'Entity' },
+  { id: 'range', title: 'Value range' },
+  { id: 'callout', title: 'Callout' },
+  { id: 'actions', title: 'Actions' }
 ];
 // Entity settings, in editor order. 'plain' is a number box without a slider (no fixed range);
 // 'threshold' is a slider that spans baseline to critical (0-1 with a state map); 'map' is a list
 // of state -> divergence rows.
 const ENTITY_SETTINGS = [
-  { key: 'entity', type: 'entity', label: 'Entity ID', required: true, placeholder: 'sensor.living_room_temperature',
+  { key: 'entity', group: 'source', type: 'entity', label: 'Entity ID', required: true, placeholder: 'sensor.living_room_temperature',
     tip: 'Home Assistant entity that drives this callout.' },
-  { key: 'name', type: 'text', label: 'Name', placeholder: 'Friendly name of the entity', defaultText: 'Friendly name',
+  { key: 'name', group: 'source', type: 'text', label: 'Name', placeholder: 'Friendly name of the entity', defaultText: 'Friendly name',
     tip: 'Label text on the callout. Empty uses the friendly name of the entity.' },
-  { key: 'category', type: 'text', label: 'Category', placeholder: 'SYSTEM ANOMALY', defaultText: 'SYSTEM ANOMALY, translated',
+  { key: 'category', group: 'source', type: 'text', label: 'Category', placeholder: 'SYSTEM ANOMALY', defaultText: 'SYSTEM ANOMALY, translated',
     tip: 'Header text above the label, for example THERMAL VARIANCE.' },
-  { key: 'baseline', type: 'plain', label: 'Baseline (divergence 0)', default: 0,
-    tip: 'Value at which the entity is calm (divergence 0).' },
-  { key: 'critical', type: 'plain', label: 'Critical (divergence 1)', default: 100,
-    tip: 'Value at which the entity is fully diverged (divergence 1). If it is below the baseline, lower values diverge.' },
-  { key: 'state_map', type: 'map', label: 'State map', defaultText: 'none',
-    tip: 'Divergence (0-1) for each listed state, for example home 0 and not_home 1. A listed state ignores baseline and critical. With a map, the entity thresholds are divergence values (0-1).' },
-  { key: 'unit', type: 'text', label: 'Unit', placeholder: 'Unit of the entity', defaultText: 'Entity unit',
+  { key: 'unit', group: 'source', type: 'text', label: 'Unit', placeholder: 'Unit of the entity', defaultText: 'Entity unit',
     tip: 'Unit shown after the value. Empty uses the unit of the entity.' },
-  { key: 'angle', type: 'number', label: 'Angle (°, empty = auto)', min: 0, max: 360, step: 1, nullable: true, placeholder: 'Auto', defaultText: 'auto-spaced',
+  { key: 'baseline', group: 'range', type: 'plain', label: 'Baseline (divergence 0)', default: 0,
+    tip: 'Value at which the entity is calm (divergence 0).' },
+  { key: 'critical', group: 'range', type: 'plain', label: 'Critical (divergence 1)', default: 100,
+    tip: 'Value at which the entity is fully diverged (divergence 1). If it is below the baseline, lower values diverge.' },
+  { key: 'state_map', group: 'range', type: 'map', label: 'State map', defaultText: 'none',
+    tip: 'Divergence (0-1) for each listed state, for example home 0 and not_home 1. A listed state ignores baseline and critical. With a map, the entity thresholds are divergence values (0-1).' },
+  { key: 'angle', group: 'callout', type: 'number', label: 'Angle (°, empty = auto)', min: 0, max: 360, step: 1, nullable: true, placeholder: 'Auto', defaultText: 'auto-spaced',
     tip: 'Position of the callout on the ring in degrees (0 = right, counter-clockwise). Leave empty to space the callouts evenly.' },
-  { key: 'monitoring_threshold', type: 'threshold', label: 'Monitoring threshold (sensor value)', mapLabel: 'Monitoring threshold (0–1)',
+  { key: 'monitoring_threshold', group: 'callout', type: 'threshold', label: 'Monitoring threshold (sensor value)', mapLabel: 'Monitoring threshold (0–1)',
     nullable: true, placeholder: 'Card setting', defaultText: 'card setting',
     tip: 'Sensor value where this callout appears as MONITORING; with a state map, a divergence value (0-1). Leave empty to use the card setting.' },
-  { key: 'divergence_threshold', type: 'threshold', label: 'Divergence threshold (sensor value)', mapLabel: 'Divergence threshold (0–1)',
+  { key: 'divergence_threshold', group: 'callout', type: 'threshold', label: 'Divergence threshold (sensor value)', mapLabel: 'Divergence threshold (0–1)',
     nullable: true, placeholder: 'Card setting', defaultText: 'card setting',
     tip: 'Sensor value where this callout changes to DIVERGENCE; with a state map, a divergence value (0-1). Leave empty to use the card setting.' },
-  { key: 'always_visible', type: 'bool', label: 'Always visible callout', default: false,
+  { key: 'always_visible', group: 'callout', type: 'bool', label: 'Always visible callout', default: false,
     tip: 'Show the callout as MONITORING also when it would be hidden.' },
-  { key: 'tap_action', type: 'action', label: 'Tap action', defaultText: 'more-info',
+  { key: 'tap_action', group: 'actions', type: 'action', label: 'Tap action', defaultText: 'more-info',
     tip: 'Action when you tap this callout. The default opens more-info.' },
-  { key: 'hold_action', type: 'action', label: 'Hold action', defaultText: 'none',
+  { key: 'hold_action', group: 'actions', type: 'action', label: 'Hold action', defaultText: 'none',
     tip: 'Action when you press and hold this callout.' }
 ];
 // ---- Localization ----
@@ -553,10 +566,11 @@ const TRANSLATIONS = {
       state: 'Zustand', divergenceOf: 'Divergenz von {state}', removeState: '{state} entfernen'
     },
     sections: {
-      theme: 'Design und Eklipse', waves: 'Wellen und Schichten', ambient: 'Umgebungsschichten', callouts: 'Beschriftungen',
-      centre: 'Ringmitte', layout: 'Layout und Leistung',
-      centre_hint: 'Tippe auf die Mitte des Rings oder halte sie gedrückt. Für ein browser_mod-Popup nutze die Aktion „fire-dom-event“ mit einem browser_mod-Block in YAML.'
+      appearance: "Darstellung", eclipse: "Eklipse", peak: "Gipfel", strata: "Schichten und Wellen", ambient: "Umgebungsschichten",
+      divergence: "Divergenz", text: "Beschriftungstext", interaction: "Bedienung", performance: "Leistung",
+      interaction_hint: "Tippe auf die Mitte des Rings oder auf eine Beschriftung oder halte sie gedrückt. Für ein browser_mod-Popup nutze die Aktion „fire-dom-event“ mit einem browser_mod-Block in YAML."
     },
+    entityGroups: { source: "Entität", range: "Wertebereich", callout: "Beschriftung", actions: "Aktionen" },
     options: { theme_mode: { dark: 'Dunkel', light: 'Hell', auto: 'Auto' }, language: { '': 'Auto (Home Assistant)' } },
     settings: {
       theme_mode: ['Design', 'Dunkel zeigt eine nächtliche Eklipse, hell zeigt Tinte auf Papier. Auto folgt dem Dunkelmodus von Home Assistant.'],
@@ -619,10 +633,11 @@ const TRANSLATIONS = {
       state: 'État', divergenceOf: 'Divergence de {state}', removeState: 'Supprimer {state}'
     },
     sections: {
-      theme: 'Thème et éclipse', waves: 'Vagues et strates', ambient: 'Strates ambiantes', callouts: 'Étiquettes',
-      centre: "Centre de l'anneau", layout: 'Mise en page et performances',
-      centre_hint: "Appuyez ou maintenez le centre de l'anneau. Pour une fenêtre browser_mod, utilisez l'action « fire-dom-event » avec un bloc browser_mod en YAML."
+      appearance: "Apparence", eclipse: "Éclipse", peak: "Pic", strata: "Strates et vagues", ambient: "Strates ambiantes",
+      divergence: "Divergence", text: "Texte des étiquettes", interaction: "Interaction", performance: "Performances",
+      interaction_hint: "Appuyez ou maintenez le centre de l'anneau ou une étiquette. Pour une fenêtre browser_mod, utilisez l'action « fire-dom-event » avec un bloc browser_mod en YAML."
     },
+    entityGroups: { source: "Entité", range: "Plage de valeurs", callout: "Étiquette", actions: "Actions" },
     options: { theme_mode: { dark: 'Sombre', light: 'Clair', auto: 'Auto' }, language: { '': 'Auto (Home Assistant)' } },
     settings: {
       theme_mode: ['Thème', "Sombre affiche une éclipse de nuit, clair de l'encre sur papier. Auto suit le mode sombre de Home Assistant."],
@@ -685,10 +700,11 @@ const TRANSLATIONS = {
       state: 'Estado', divergenceOf: 'Divergencia de {state}', removeState: 'Eliminar {state}'
     },
     sections: {
-      theme: 'Tema y eclipse', waves: 'Ondas y estratos', ambient: 'Estratos ambientales', callouts: 'Etiquetas',
-      centre: 'Centro del anillo', layout: 'Diseño y rendimiento',
-      centre_hint: 'Toca o mantén pulsado el centro del anillo. Para una ventana de browser_mod usa la acción "fire-dom-event" con un bloque browser_mod en YAML.'
+      appearance: "Apariencia", eclipse: "Eclipse", peak: "Pico", strata: "Estratos y ondas", ambient: "Estratos ambientales",
+      divergence: "Divergencia", text: "Texto de las etiquetas", interaction: "Interacción", performance: "Rendimiento",
+      interaction_hint: "Toca o mantén pulsado el centro del anillo o una etiqueta. Para una ventana de browser_mod usa la acción \"fire-dom-event\" con un bloque browser_mod en YAML."
     },
+    entityGroups: { source: "Entidad", range: "Rango de valores", callout: "Etiqueta", actions: "Acciones" },
     options: { theme_mode: { dark: 'Oscuro', light: 'Claro', auto: 'Auto' }, language: { '': 'Auto (Home Assistant)' } },
     settings: {
       theme_mode: ['Tema', 'Oscuro muestra un eclipse nocturno, claro muestra tinta sobre papel. Auto sigue el modo oscuro de Home Assistant.'],
@@ -751,10 +767,11 @@ const TRANSLATIONS = {
       state: 'Status', divergenceOf: 'Divergentie van {state}', removeState: '{state} verwijderen'
     },
     sections: {
-      theme: 'Thema en eclips', waves: 'Golven en lagen', ambient: 'Omgevingslagen', callouts: 'Labels',
-      centre: 'Midden van de ring', layout: 'Opmaak en prestaties',
-      centre_hint: 'Tik op het midden van de ring of houd het ingedrukt. Gebruik voor een browser_mod-pop-up de actie "fire-dom-event" met een browser_mod-blok in YAML.'
+      appearance: "Weergave", eclipse: "Eclips", peak: "Piek", strata: "Lagen en golven", ambient: "Omgevingslagen",
+      divergence: "Divergentie", text: "Labeltekst", interaction: "Bediening", performance: "Prestaties",
+      interaction_hint: "Tik op het midden van de ring of op een label, of houd het ingedrukt. Gebruik voor een browser_mod-pop-up de actie \"fire-dom-event\" met een browser_mod-blok in YAML."
     },
+    entityGroups: { source: "Entiteit", range: "Waardebereik", callout: "Label", actions: "Acties" },
     options: { theme_mode: { dark: 'Donker', light: 'Licht', auto: 'Auto' }, language: { '': 'Auto (Home Assistant)' } },
     settings: {
       theme_mode: ['Thema', 'Donker toont een nachtelijke eclips, licht toont inkt op papier. Auto volgt de donkere modus van Home Assistant.'],
@@ -817,10 +834,11 @@ const TRANSLATIONS = {
       state: 'Stato', divergenceOf: 'Divergenza di {state}', removeState: 'Rimuovi {state}'
     },
     sections: {
-      theme: 'Tema ed eclissi', waves: 'Onde e strati', ambient: 'Strati ambientali', callouts: 'Etichette',
-      centre: "Centro dell'anello", layout: 'Layout e prestazioni',
-      centre_hint: "Tocca o tieni premuto il centro dell'anello. Per un popup browser_mod usa l'azione \"fire-dom-event\" con un blocco browser_mod in YAML."
+      appearance: "Aspetto", eclipse: "Eclissi", peak: "Picco", strata: "Strati e onde", ambient: "Strati ambientali",
+      divergence: "Divergenza", text: "Testo delle etichette", interaction: "Interazione", performance: "Prestazioni",
+      interaction_hint: "Tocca o tieni premuto il centro dell'anello o un'etichetta. Per un popup browser_mod usa l'azione \"fire-dom-event\" con un blocco browser_mod in YAML."
     },
+    entityGroups: { source: "Entità", range: "Intervallo di valori", callout: "Etichetta", actions: "Azioni" },
     options: { theme_mode: { dark: 'Scuro', light: 'Chiaro', auto: 'Auto' }, language: { '': 'Auto (Home Assistant)' } },
     settings: {
       theme_mode: ['Tema', "Scuro mostra un'eclissi notturna, chiaro mostra inchiostro su carta. Auto segue la modalità scura di Home Assistant."],
@@ -914,7 +932,9 @@ function i18n(lang) {
     title: secs[sec.id] || sec.title,
     hint: sec.hint && (secs[`${sec.id}_hint`] || sec.hint)
   }));
-  I18N_CACHE[code] = { code, text, ui, sections, settings, entity };
+  const groupNames = tr.entityGroups || {};
+  const entityGroups = ENTITY_GROUPS.map(g => ({ ...g, title: groupNames[g.id] || g.title }));
+  I18N_CACHE[code] = { code, text, ui, sections, settings, entity, entityGroups };
   return I18N_CACHE[code];
 }
 
@@ -938,7 +958,7 @@ class RehoboamCardEditor extends HTMLElement {
 
   static settingsFor(lang) {
     const L = i18n(lang);
-    return { language: L.code, sections: L.sections, card: L.settings, entity: L.entity, ui: L.ui, text: L.text, languages: LANGUAGES };
+    return { language: L.code, sections: L.sections, card: L.settings, entity: L.entity, entityGroups: L.entityGroups, ui: L.ui, text: L.text, languages: LANGUAGES };
   }
 
   constructor() {
@@ -1505,6 +1525,17 @@ class RehoboamCardEditor extends HTMLElement {
         .checkbox-row {
           position: relative;
         }
+        .sub-title {
+          grid-column: 1 / -1;
+          margin: 6px 0 -4px;
+          padding-bottom: 4px;
+          border-bottom: 1px solid var(--divider-color, rgba(255,255,255,0.12));
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 0.6px;
+          text-transform: uppercase;
+          color: var(--secondary-text-color, #9b9b9b);
+        }
         .map-row {
           display: flex;
           align-items: center;
@@ -1564,7 +1595,8 @@ class RehoboamCardEditor extends HTMLElement {
                 <button class="btn btn-danger btn-remove" data-idx="${idx}">${esc(L.ui.remove)}</button>
               </summary>
               <div class="grid">
-                ${L.entity.map(st => this._entityField(st, ent, idx, tb, hasEntityPicker)).join('')}
+                ${L.entityGroups.map(g => `<div class="sub-title">${esc(g.title)}</div>
+                ${L.entity.filter(st => st.group === g.id).map(st => this._entityField(st, ent, idx, tb, hasEntityPicker)).join('')}`).join('')}
               </div>
             </details>
           `;
