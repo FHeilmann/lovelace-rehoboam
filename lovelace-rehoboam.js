@@ -1946,9 +1946,14 @@ class RehoboamCard extends HTMLElement {
         unit: conf.unit !== undefined && conf.unit !== '' ? conf.unit : null,
         currentDivergence: prev ? prev.currentDivergence : 0,
         targetDivergence: prev ? prev.targetDivergence : 0,
-        formattedValue: '--',
+        // Callout state and text carry over a config change, so a rebuilt callout does not replay
+        // its draw-on and fade-in
+        formattedValue: prev ? prev.formattedValue : '--',
+        lastHeader: prev ? prev.lastHeader : null,
+        textWidth: prev ? prev.textWidth : 0,
         resolvedName: conf.name || conf.entity || 'SENSOR',
-        isVisible: Boolean(conf.always_visible),
+        isVisible: prev ? prev.isVisible : Boolean(conf.always_visible),
+        wasDiverging: prev ? prev.wasDiverging : false,
         domGroup: null,
         domPoly: null,
         domHeader: null,
@@ -2685,7 +2690,8 @@ class RehoboamCard extends HTMLElement {
     for (let i = 0; i < this._entities.length; i++) {
       const ent = this._entities[i];
       const g = document.createElementNS(ns, 'g');
-      g.setAttribute('class', `callout ${ent.alwaysVisible ? 'visible' : ''}`);
+      // A rebuilt callout starts in its current state (no transition from hidden)
+      g.setAttribute('class', `callout ${ent.isVisible ? 'visible' : ''} ${ent.wasDiverging ? 'diverging' : 'monitoring'}`);
 
       // Transparent tap area over the reticle, leader and labels; only live while visible
       const hitRect = document.createElementNS(ns, 'rect');
@@ -2712,11 +2718,11 @@ class RehoboamCard extends HTMLElement {
       const tHeader = document.createElementNS(ns, 'text');
       tHeader.setAttribute('class', 'label-header');
       const L = this._i18n || i18n(this._config.language);
-      tHeader.textContent = `${this._config.monitoring_label || L.text.monitoring}: ${ent.category || L.text.category}`.toUpperCase();
+      tHeader.textContent = ent.lastHeader || `${this._config.monitoring_label || L.text.monitoring}: ${ent.category || L.text.category}`.toUpperCase();
 
       const tSub = document.createElementNS(ns, 'text');
       tSub.setAttribute('class', 'label-sub');
-      tSub.textContent = `${ent.resolvedName.toUpperCase()} : --`;
+      tSub.textContent = ent.formattedValue !== '--' ? ent.formattedValue : `${ent.resolvedName.toUpperCase()} : --`;
 
       g.appendChild(hex);
       g.appendChild(cIn);
