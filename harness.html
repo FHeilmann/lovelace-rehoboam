@@ -102,14 +102,6 @@ const PRESETS = [
   { theme_mode: 'dark', test_divergence: 1, eclipse_angle: 180 },
   { theme_mode: 'light', test_divergence: 1, eclipse_angle: 180 },
 ];
-// Card options this page edits, in YAML order. Entity options, in YAML order.
-const CARD_KEYS = ['theme_mode', 'height', 'font_family', 'font_size', 'eclipse_angle', 'eclipse_intensity', 'ray_intensity',
-  'facet_shading', 'ring_shading', 'amplitude_scale', 'peak_width', 'peak_sharpness', 'peak_height', 'strata_width',
-  'baseline_height', 'ambient_count', 'ambient_size', 'ambient_width', 'ambient_lifetime', 'transition_tau',
-  'monitoring_threshold', 'divergence_threshold', 'test_divergence', 'ring_scale', 'resolution_scale', 'fps_idle',
-  'fps_active', 'center_entity', 'hold_time', 'center_tap_action', 'center_hold_action'];
-const ENT_KEYS = ['entity', 'name', 'category', 'baseline', 'critical', 'unit', 'angle', 'monitoring_threshold',
-  'divergence_threshold', 'always_visible', 'tap_action', 'hold_action'];
 // Example sensors. `_div` is the simulated value (0 = baseline, 1 = critical); it never goes into the YAML.
 const DEMO_ENTS = [
   { entity: 'sensor.pm25', name: 'PM2.5', category: 'AIR QUALITY', baseline: 5, critical: 60, unit: 'µg/m³', angle: 180, monitoring_threshold: 15, divergence_threshold: 35, _div: 0.85 },
@@ -119,7 +111,9 @@ const DEMO_ENTS = [
   { entity: 'sensor.battery', name: 'Battery', category: 'BATTERY', baseline: 100, critical: 20, unit: '%', angle: 205, _div: 0.5 },
 ];
 
-let TIPS = {}, DEFAULTS = {}, state = {}, ENTS = [], cards = [];
+// The settings list of the card (labels, ranges, tooltips), so this page matches the visual editor
+let SETTINGS = { sections: [], card: [], entity: [] }, CARD_KEYS = [], ENT_KEYS = [];
+let DEFAULTS = {}, state = {}, ENTS = [], cards = [];
 const isSet = v => v !== null && v !== undefined && v !== '';
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
 const roundTo = (v, step) => { const d = Math.max(0, -Math.floor(Math.log10(step))); return Number(v.toFixed(Math.min(d, 10))); };
@@ -227,7 +221,7 @@ function labelEl(text, tip) {
 }
 function heading(parent, text) { parent.appendChild(el('h3', '', text)); }
 // Slider and number box for one option. With nullable, an empty box means "not set".
-function num(parent, label, key, min, max, step, { obj = state, nullable = false, unsetAt = min, placeholder = '', onChange = apply, tip = TIPS[key] } = {}) {
+function num(parent, label, key, min, max, step, { obj = state, nullable = false, unsetAt = min, placeholder = '', onChange = apply, tip } = {}) {
   const row = el('div', 'row');
   row.appendChild(labelEl(label, tip));
   const ctl = el('div', 'ctl');
@@ -250,11 +244,12 @@ function num(parent, label, key, min, max, step, { obj = state, nullable = false
   };
   sync();
   row.sync = sync;
+  row.key = key;
   row.setBounds = (lo, hi, st, at) => { setBounds(lo, hi, st); unsetAt = at; sync(); };
   parent.appendChild(row);
   return row;
 }
-function check(parent, label, key, { obj = state, onChange = apply, tip = TIPS[key] } = {}) {
+function check(parent, label, key, { obj = state, onChange = apply, tip } = {}) {
   const row = el('label', 'check');
   const inp = el('input'); inp.type = 'checkbox'; inp.checked = !!obj[key];
   inp.onchange = () => { obj[key] = inp.checked; onChange(); };
@@ -262,7 +257,7 @@ function check(parent, label, key, { obj = state, onChange = apply, tip = TIPS[k
   const t = infoIcon(tip); if (t) row.appendChild(t);
   parent.appendChild(row);
 }
-function text(parent, label, key, placeholder, { obj = state, onChange = apply, tip = TIPS[key], live = false } = {}) {
+function text(parent, label, key, placeholder, { obj = state, onChange = apply, tip, live = false } = {}) {
   const row = el('div', 'row');
   row.appendChild(labelEl(label, tip));
   const inp = el('input'); inp.type = 'text'; inp.placeholder = placeholder; inp.value = obj[key] ?? '';
@@ -271,7 +266,7 @@ function text(parent, label, key, placeholder, { obj = state, onChange = apply, 
   row.appendChild(inp);
   parent.appendChild(row);
 }
-function plainNum(parent, label, key, { obj, onChange, tip = TIPS[key] }) {
+function plainNum(parent, label, key, { obj, onChange, tip }) {
   const row = el('div', 'row');
   row.appendChild(labelEl(label, tip));
   const inp = el('input'); inp.type = 'number'; inp.step = 'any'; inp.value = obj[key] ?? '';
@@ -280,9 +275,9 @@ function plainNum(parent, label, key, { obj, onChange, tip = TIPS[key] }) {
   row.appendChild(inp);
   parent.appendChild(row);
 }
-function seg(parent, options, key, { tip = TIPS[key] } = {}) {
+function seg(parent, label, options, key, { tip } = {}) {
   const row = el('div', 'row');
-  row.appendChild(labelEl('Theme', tip));
+  row.appendChild(labelEl(label, tip));
   const s = el('div', 'seg');
   options.forEach(([val, label]) => {
     const b = el('button', state[key] === val ? 'on' : '', label); b.type = 'button';
@@ -312,7 +307,7 @@ function buildAction(kind, param) {
   if (PARAM[kind]) a[PARAM[kind][0]] = param || PARAM[kind][1];
   return a;
 }
-function actionField(parent, label, key, { obj = state, tip = TIPS[key] } = {}) {
+function actionField(parent, label, key, { obj = state, tip } = {}) {
   const row = el('div', 'row');
   row.appendChild(labelEl(label, tip));
   const ctl = el('div', 'ctl');
@@ -369,32 +364,33 @@ function renderEntities() {
     sum.append(title, rm);
     box.appendChild(sum);
     const changed = () => { setTitle(); apply(); };
-    const bounds = () => { const b = thresholdBounds(e); thresholds.forEach((r, i) => r.setBounds(b.lo, b.hi, b.step, i ? b.divAt : b.monAt)); changed(); };
+    const bounds = () => { refreshThresholds(); changed(); };
     divRows.push(num(box, 'Simulated value', '_div', 0, 1, 0.01, { obj: e, onChange: pushStates, tip: DIV_TIP }));
-    text(box, 'Entity ID', 'entity', 'sensor.living_room_temperature', { obj: e, onChange: changed });
-    const pair1 = el('div', 'pair'); box.appendChild(pair1);
-    text(pair1, 'Name', 'name', 'Friendly name', { obj: e, onChange: changed });
-    text(pair1, 'Category', 'category', 'SYSTEM ANOMALY', { obj: e, onChange: changed });
-    const pair2 = el('div', 'pair'); box.appendChild(pair2);
-    plainNum(pair2, 'Baseline', 'baseline', { obj: e, onChange: bounds });
-    plainNum(pair2, 'Critical', 'critical', { obj: e, onChange: bounds });
-    text(box, 'Unit', 'unit', 'Unit of the entity', { obj: e, onChange: changed });
-    num(box, 'Angle (°, empty = auto)', 'angle', 0, 360, 1, { obj: e, nullable: true, placeholder: 'Auto', unsetAt: autoAngle(idx) });
     const b = thresholdBounds(e);
-    const thresholds = [
-      num(box, 'Monitoring threshold', 'monitoring_threshold', b.lo, b.hi, b.step, { obj: e, nullable: true, placeholder: 'Card setting', unsetAt: b.monAt, tip: TIPS.ent_monitoring_threshold }),
-      num(box, 'Divergence threshold', 'divergence_threshold', b.lo, b.hi, b.step, { obj: e, nullable: true, placeholder: 'Card setting', unsetAt: b.divAt, tip: TIPS.ent_divergence_threshold }),
-    ];
+    const thresholds = [];
+    const pairs = { name: 'category', baseline: 'critical' };
+    let pairBox = null;
+    SETTINGS.entity.forEach(st => {
+      let parent = box;
+      if (pairs[st.key]) { pairBox = el('div', 'pair'); box.appendChild(pairBox); parent = pairBox; }
+      else if (pairBox && Object.values(pairs).includes(st.key)) { parent = pairBox; pairBox = null; }
+      const opts = { obj: e, tip: st.tip };
+      switch (st.type) {
+        case 'entity': case 'text': text(parent, st.label, st.key, st.placeholder || '', { ...opts, onChange: changed }); break;
+        case 'plain': plainNum(parent, st.label, st.key, { ...opts, onChange: bounds }); break;
+        case 'number': num(parent, st.label, st.key, st.min, st.max, st.step, { ...opts, nullable: st.nullable, placeholder: st.placeholder || '', unsetAt: st.key === 'angle' ? autoAngle(idx) : st.min }); break;
+        case 'threshold': thresholds.push(num(parent, st.label, st.key, b.lo, b.hi, b.step, { ...opts, nullable: true, placeholder: st.placeholder || '', unsetAt: st.key === 'divergence_threshold' ? b.divAt : b.monAt })); break;
+        case 'bool': check(parent, st.label, st.key, opts); break;
+        case 'action': actionField(parent, st.label, st.key, opts); break;
+      }
+    });
     thresholdRows.push({ e, rows: thresholds });
-    check(box, 'Always visible callout', 'always_visible', { obj: e });
-    actionField(box, 'Tap action', 'tap_action', { obj: e });
-    actionField(box, 'Hold action', 'hold_action', { obj: e });
     entList.appendChild(box);
   });
 }
 // The card thresholds move the resting point of the entity threshold sliders
 function refreshThresholds() {
-  thresholdRows.forEach(({ e, rows }) => { const b = thresholdBounds(e); rows.forEach((r, i) => r.setBounds(b.lo, b.hi, b.step, i ? b.divAt : b.monAt)); });
+  thresholdRows.forEach(({ e, rows }) => { const b = thresholdBounds(e); rows.forEach(r => r.setBounds(b.lo, b.hi, b.step, r.key === 'divergence_threshold' ? b.divAt : b.monAt)); });
 }
 
 // ---- config output ----
@@ -433,55 +429,16 @@ function toast(msg) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
 }
 
-// ---- build the page once the card script is loaded ----
-function buildPanel() {
-  const panel = document.getElementById('panel');
-  const intro = el('p', 'intro', 'Change the settings, move the simulated values, then copy the YAML into a manual card in your dashboard. Tap the centre or a callout to see its action.');
-  panel.appendChild(intro);
-
-  heading(panel, 'Theme and eclipse');
-  seg(panel, [['dark', 'Dark'], ['light', 'Light'], ['auto', 'Auto']], 'theme_mode');
-  check(panel, 'Simulate Home Assistant dark mode', '_ha_dark', { tip: 'Page only: the dark mode setting that theme Auto follows.' });
-  num(panel, 'Eclipse angle (°, empty = follow)', 'eclipse_angle', 0, 360, 1, { nullable: true, placeholder: 'Follow', unsetAt: 180 });
-  num(panel, 'Eclipse intensity', 'eclipse_intensity', 0, 2, 0.05);
-  num(panel, 'Corona rays', 'ray_intensity', 0, 1, 0.05);
-  num(panel, 'Test divergence (empty = live)', 'test_divergence', 0, 1, 0.01, { nullable: true, placeholder: 'Live', unsetAt: 0 });
-
-  heading(panel, 'Waves and strata');
-  num(panel, 'Wave amplitude scale', 'amplitude_scale', 0.4, 2, 0.05);
-  num(panel, 'Peak width', 'peak_width', 0.4, 3, 0.05);
-  num(panel, 'Peak sharpness (0 = dome, 1 = point)', 'peak_sharpness', 0, 1, 0.05);
-  num(panel, 'Peak prominence', 'peak_height', 0.3, 1.43, 0.01);
-  num(panel, 'Strata width', 'strata_width', 0.3, 2.5, 0.05);
-  num(panel, 'Baseline wave height (0 = flat ring)', 'baseline_height', 0, 5, 0.1);
-  num(panel, 'Spike 3D shading', 'facet_shading', 0, 1, 0.05);
-  check(panel, 'Wobbling ring shading', 'ring_shading');
-
-  heading(panel, 'Ambient strata');
-  num(panel, 'Count', 'ambient_count', 0, 12, 1);
-  num(panel, 'Size', 'ambient_size', 0, 1, 0.01);
-  num(panel, 'Width', 'ambient_width', 0.3, 2.5, 0.05);
-  num(panel, 'Lifetime (s)', 'ambient_lifetime', 4, 300, 1);
-
-  heading(panel, 'Callouts');
-  const onThreshold = () => { refreshThresholds(); apply(); };
-  num(panel, 'Divergence threshold (0–1)', 'divergence_threshold', 0, 1, 0.01, { onChange: onThreshold });
-  num(panel, 'Monitoring threshold (0–1, empty = none)', 'monitoring_threshold', 0, 1, 0.01, { nullable: true, placeholder: 'None', unsetAt: 0.1, onChange: onThreshold });
-  num(panel, 'Transition smoothing tau (s)', 'transition_tau', 0.2, 15, 0.1);
-  text(panel, 'Label font (CSS font-family)', 'font_family', 'Barlow Condensed (default)');
-  num(panel, 'Label font size (px)', 'font_size', 8, 32, 0.5);
-  num(panel, 'Hold duration (ms)', 'hold_time', 150, 5000, 50);
-
-  heading(panel, 'Ring centre');
-  text(panel, 'Centre entity', 'center_entity', 'sensor.anything');
-  actionField(panel, 'Centre tap action', 'center_tap_action');
-  actionField(panel, 'Centre hold action', 'center_hold_action');
-
-  heading(panel, `Entities`);
+function entitySection(panel) {
+  heading(panel, 'Entities');
   entList = el('div'); panel.appendChild(entList);
   renderEntities();
   const addBtn = el('button', 'btn add', '+ Add entity'); addBtn.type = 'button';
-  addBtn.onclick = () => { ENTS.push({ entity: '', category: 'SYSTEM ANOMALY', baseline: 0, critical: 100, _div: 0.5, _open: true }); renderEntities(); apply(); };
+  addBtn.onclick = () => {
+    const fresh = { entity: '', _div: 0.5, _open: true };
+    SETTINGS.entity.forEach(st => { if (st.default !== undefined) fresh[st.key] = st.default; });
+    ENTS.push(fresh); renderEntities(); apply();
+  };
   panel.appendChild(addBtn);
   const sim = el('div', 'sim');
   sim.appendChild(el('span', '', 'Simulate all:'));
@@ -491,13 +448,39 @@ function buildPanel() {
     sim.appendChild(b);
   });
   panel.appendChild(sim);
+}
 
-  heading(panel, 'Layout and performance');
-  text(panel, 'Card height (CSS)', 'height', '500px', { tip: TIPS.height + ' The preview here always fills the window.' });
-  num(panel, 'Ring scale', 'ring_scale', 0.25, 0.65, 0.01);
-  num(panel, 'Resolution scale', 'resolution_scale', 0.35, 1, 0.05);
-  num(panel, 'Idle FPS', 'fps_idle', 10, 60, 1);
-  num(panel, 'Active FPS', 'fps_active', 15, 60, 1);
+// ---- build the page once the card script is loaded ----
+function buildPanel() {
+  const panel = document.getElementById('panel');
+  const intro = el('p', 'intro', 'Change the settings, move the simulated values, then copy the YAML into a manual card in your dashboard. Tap the centre or a callout to see its action.');
+  panel.appendChild(intro);
+
+  const onThreshold = () => { refreshThresholds(); apply(); };
+  SETTINGS.sections.forEach(sec => {
+    heading(panel, sec.title);
+    SETTINGS.card.filter(st => st.section === sec.id).forEach(st => {
+      const opts = { tip: st.tip };
+      switch (st.type) {
+        case 'select':
+          seg(panel, st.label, st.options, st.key, opts);
+          if (st.key === 'theme_mode') check(panel, 'Simulate Home Assistant dark mode', '_ha_dark', { tip: 'Page only: the dark mode setting that theme Auto follows.' });
+          break;
+        case 'number':
+          num(panel, st.label, st.key, st.min, st.max, st.step, {
+            ...opts, nullable: st.nullable, placeholder: st.placeholder || '', unsetAt: settingUnsetAt(st, state),
+            onChange: /threshold/.test(st.key) ? onThreshold : apply
+          });
+          break;
+        case 'text': case 'entity':
+          text(panel, st.label, st.key, st.placeholder || '', st.key === 'height' ? { tip: st.tip + ' The preview here always fills the window.' } : opts);
+          break;
+        case 'bool': check(panel, st.label, st.key, opts); break;
+        case 'action': actionField(panel, st.label, st.key, opts); break;
+      }
+    });
+  });
+  entitySection(panel);
 
   heading(panel, 'Your config');
   yamlBox = el('pre'); yamlBox.id = 'yaml'; panel.appendChild(yamlBox);
@@ -519,7 +502,9 @@ function buildPanel() {
 }
 
 function init() {
-  TIPS = (customElements.get('lovelace-rehoboam-editor') || {}).settingTips || {};
+  SETTINGS = customElements.get('lovelace-rehoboam-editor').settings;
+  CARD_KEYS = SETTINGS.card.map(st => st.key);
+  ENT_KEYS = SETTINGS.entity.map(st => st.key);
   // Card defaults, read from the card itself so this page never drifts from it
   const probe = document.createElement('lovelace-rehoboam');
   probe.setConfig({ entities: [] });

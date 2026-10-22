@@ -128,65 +128,73 @@ The card-level `monitoring_threshold` and `divergence_threshold` are fractions (
 
 ## Configuration Options
 
+The editor, the playground and these tables use the same settings list in `lovelace-rehoboam.js`. Values outside a range are clamped to it.
+
 ### Card Options
 
-| Parameter | Type | Default | Description |
-| --------- | ---- | ------- | ----------- |
-| `type` | string | **Required** | `custom:lovelace-rehoboam` |
-| `theme_mode` | string | `dark` | `dark` (night eclipse), `light` (ink on paper) or `auto` (follows the Home Assistant dark mode) |
-| `height` | string | `500px` | Card height in CSS units (e.g. `500px`, or `100vh` for full-screen panel views) |
-| `font_family` | string | Barlow Condensed | CSS font family of the callout labels. The default loads from Google Fonts |
-| `font_size` | number | `13` | Callout label font size in px (`8` – `32`) |
-| `eclipse_angle` | number or `auto` | `auto` | Empty or `auto`: the eclipse turns toward the most diverged entity. A number fixes the angle in degrees (`0` – `360`) |
-| `eclipse_intensity` | number | `1.0` | Brightness of the eclipse crescent and corona (`0.0` – `2.0`) |
-| `ray_intensity` | number | `0.35` | Outer ray shimmer intensity (`0.0` – `1.0`) |
-| `facet_shading` | number | `0.6` | Strength of the fold shadows on the strata (`0.0` – `1.0`) |
-| `ring_shading` | boolean | `true` | Concentric shading rings that wobble in and out across the strata |
-| `amplitude_scale` | number | `1.25` | Global wave height multiplier (`0.1` – `3.0`) |
-| `strata_width` | number | `1.0` | Width of the strata below a peak (`0.3` – `2.5`) |
-| `peak_width` | number | `1.0` | Width of the peak (`0.4` – `3.0`) |
-| `peak_sharpness` | number | `0` | `0` gives a flat-topped dome, `1` a pointed tip (`0.0` – `1.0`) |
-| `peak_height` | number | `1.0` | How far the peak stands out from the strata (`0.3` – `1.43`) |
-| `baseline_height` | number | `1.0` | Height of the thin band of waves around the full ring (`0` – `5`, `0` turns it off) |
-| `ambient_count` | number | `3` | Maximum number of ambient strata at one time (`0` – `12`, `0` turns them off) |
-| `ambient_size` | number | `0.3` | Maximum height of one ambient stratum (`0.0` – `1.0`) |
-| `ambient_width` | number | `1.0` | Width of one ambient stratum (`0.3` – `2.5`) |
-| `ambient_lifetime` | number | `25` | Seconds one ambient stratum takes to rise and fall (`4` – `300`) |
-| `transition_tau` | number | `2.2` | Time constant in seconds for smooth state transitions (`0.2` – `60`) |
-| `ring_scale` | number | `0.42` | Ring radius relative to the card size (`0.1` – `1.0`) |
-| `resolution_scale` | number | `0.65` | Canvas render resolution factor (`0.1` – `2.0`) |
-| `fps_idle` | number | `24` | Target frame rate when all entities are nominal (`1` – `120`) |
-| `fps_active` | number | `45` | Target frame rate during divergence (`1` – `120`) |
-| `monitoring_threshold` | number | none | Card-level monitoring threshold (`0.0` – `1.0`). See [Callout States](#callout-states) |
-| `divergence_threshold` | number | `0.15` | Card-level divergence threshold (`0.0` – `1.0`). See [Callout States](#callout-states) |
-| `test_divergence` | number | none | Override (`0.0` – `1.0`) to preview the eclipse bloom |
-| `center_entity` | string | none | Entity that the centre actions use, for example for `more-info` or `toggle` |
-| `center_tap_action` | action | `none` | Action on a tap at the centre of the ring |
-| `center_hold_action` | action | `none` | Action on a hold at the centre of the ring |
-| `hold_time` | number | `500` | Milliseconds a press must last to count as a hold (`150` – `5000`), for the centre and the callouts |
-| `entities` | list | `[]` | List of entity IDs or entity configuration objects (see below) |
+<!-- BEGIN card-options -->
+| Option | Type | Default | Range | Description |
+| ------ | ---- | ------- | ----- | ----------- |
+| `type` | string | **Required** | | `custom:lovelace-rehoboam` |
+| `theme_mode` | string | `dark` | `dark`, `light`, `auto` | Dark shows a night eclipse, light shows ink on paper. Auto follows the dark mode setting of Home Assistant. |
+| `eclipse_angle` | number or auto | `auto` | `0` – `360` | Direction of the eclipse glow in degrees (0 = right, counter-clockwise). Leave empty to turn the glow toward the entity with the most divergence. |
+| `eclipse_intensity` | number | `1` | `0` – `2` | Brightness of the eclipse crescent and its corona. |
+| `ray_intensity` | number | `0.35` | `0` – `1` | Strength of the thin rays that shimmer outward from the ring. |
+| `test_divergence` | number | none | `0` – `1` | Preview only: forces the eclipse glow to this divergence. Leave empty to use the live values. |
+| `amplitude_scale` | number | `1.25` | `0.1` – `3` | Height multiplier for all waves and strata. |
+| `peak_width` | number | `1` | `0.4` – `3` | Width of the peak that rises above a diverging entity. |
+| `peak_sharpness` | number | `0` | `0` – `1` | Shape of the peak: 0 is a flat-topped dome, 1 is a pointed tip. |
+| `peak_height` | number | `1` | `0.3` – `1.43` | How far the peak stands out above the strata below it. |
+| `strata_width` | number | `1` | `0.3` – `2.5` | Width of the strata below each peak. |
+| `baseline_height` | number | `1` | `0` – `5` | Height of the thin band of waves around the full ring. 0 gives a flat ring. |
+| `facet_shading` | number | `0.6` | `0` – `1` | Strength of the fold shadows that make the strata look 3D. |
+| `ring_shading` | boolean | `true` |  | Concentric shading rings that wobble inward and outward across the strata. |
+| `ambient_count` | number | `3` | `0` – `12` | Maximum number of small ambient strata that rise and fall at random places in the calm parts of the ring. 0 turns them off. |
+| `ambient_size` | number | `0.3` | `0` – `1` | Maximum height of one ambient stratum. |
+| `ambient_width` | number | `1` | `0.3` – `2.5` | Width of one ambient stratum. |
+| `ambient_lifetime` | number | `25` | `4` – `300` | Seconds one ambient stratum takes to rise and fall again. |
+| `divergence_threshold` | number | `0.15` | `0` – `1` | Fraction (0-1) of the way from baseline to critical where a callout changes to DIVERGENCE. |
+| `monitoring_threshold` | number | none | `0` – `1` | Fraction (0-1) of the way from baseline to critical where a callout appears as MONITORING. Leave empty for no monitoring state. |
+| `transition_tau` | number | `2.2` | `0.2` – `20` | Time constant in seconds of the smooth change when a value changes. Higher values give slower, calmer motion. |
+| `font_family` | string | Barlow Condensed |  | CSS font family of the callout labels. The default Barlow Condensed loads from Google Fonts. Set a local font to keep the card offline. |
+| `font_size` | number | `13` | `8` – `32` | Size of the callout label text in px. The leader lines and label spacing scale with it. |
+| `hold_time` | number | `500` | `150` – `5000` | Milliseconds a press must last to count as a hold. Applies to the centre and to the callouts. |
+| `center_entity` | string | none |  | Entity that the centre actions use, for example for more-info or toggle. |
+| `center_tap_action` | action | `none` |  | Action when you tap the centre of the ring. For a browser_mod popup use fire-dom-event with a browser_mod block in YAML. |
+| `center_hold_action` | action | `none` |  | Action when you press and hold the centre of the ring. |
+| `height` | string | `500px` |  | Card height in CSS units, for example 500px, or 100vh for a full-screen panel view. |
+| `ring_scale` | number | `0.42` | `0.2` – `0.9` | Ring radius relative to the card size. |
+| `resolution_scale` | number | `0.65` | `0.25` – `1` | Render resolution relative to the screen. Lower values save GPU time on slow tablets. |
+| `fps_idle` | number | `24` | `5` – `60` | Frame rate while all entities are calm. |
+| `fps_active` | number | `45` | `10` – `120` | Frame rate while an entity diverges or a value changes. |
+| `entities` | list | `[]` | | Entity IDs or entity option objects, see [Entity Options](#entity-options). |
+<!-- END card-options -->
 
 ### Entity Options
 
-| Parameter | Type | Default | Description |
-| --------- | ---- | ------- | ----------- |
-| `entity` | string | **Required** | Home Assistant entity ID (e.g. `sensor.cpu_temp`) |
-| `name` | string | Friendly name | Display label on the callout |
-| `category` | string | `SYSTEM ANOMALY` | Classification label in the callout header |
-| `baseline` | number | `0` | Nominal value (divergence 0) |
-| `critical` | number | `100` | Critical value (divergence 1). If `critical < baseline`, lower values diverge |
-| `monitoring_threshold` | number | card value | Monitoring threshold in the sensor's unit. See [Callout States](#callout-states) |
-| `divergence_threshold` | number | card value | Divergence threshold in the sensor's unit. See [Callout States](#callout-states) |
-| `unit` | string | Entity unit | Display unit override |
-| `angle` | number | Auto-spaced | Fixed angle in degrees (`0` – `360`, `0°` = right, counter-clockwise; auto-spacing starts at `22.5°`) |
-| `always_visible` | boolean | `false` | Show the callout as monitoring when it would be hidden |
-| `state_map` | object | none | Map of raw state strings to divergence values (`0.0` – `1.0`), e.g. `{ "on": 1.0, "off": 0.0 }` |
-| `tap_action` | action | `more-info` | Action on a tap on the callout |
-| `hold_action` | action | `none` | Action on a hold on the callout |
+<!-- BEGIN entity-options -->
+| Option | Type | Default | Range | Description |
+| ------ | ---- | ------- | ----- | ----------- |
+| `entity` | string | **Required** |  | Home Assistant entity that drives this callout. |
+| `name` | string | Friendly name |  | Label text on the callout. Empty uses the friendly name of the entity. |
+| `category` | string | `SYSTEM ANOMALY` |  | Header text above the label, for example THERMAL VARIANCE. |
+| `baseline` | number | `0` |  | Value at which the entity is calm (divergence 0). |
+| `critical` | number | `100` |  | Value at which the entity is fully diverged (divergence 1). If it is below the baseline, lower values diverge. |
+| `unit` | string | Entity unit |  | Unit shown after the value. Empty uses the unit of the entity. |
+| `angle` | number | auto-spaced | `0` – `360` | Position of the callout on the ring in degrees (0 = right, counter-clockwise). Leave empty to space the callouts evenly. |
+| `monitoring_threshold` | number | card setting | baseline – critical | Sensor value where this callout appears as MONITORING. Leave empty to use the card setting. |
+| `divergence_threshold` | number | card setting | baseline – critical | Sensor value where this callout changes to DIVERGENCE. Leave empty to use the card setting. |
+| `always_visible` | boolean | `false` |  | Show the callout as MONITORING also when it would be hidden. |
+| `state_map` | object | none |  | YAML only: map of raw states to divergence values (0-1), for example "on": 1 and "off": 0. Use it for entities without a numeric state. |
+| `tap_action` | action | `more-info` |  | Action when you tap this callout. The default opens more-info. |
+| `hold_action` | action | `none` |  | Action when you press and hold this callout. |
+<!-- END entity-options -->
 
 ---
 
 ## Development
+
+The settings list (`CARD_SETTINGS` and `ENTITY_SETTINGS` in `lovelace-rehoboam.js`) holds the label, range, default and tooltip of every option. The card, the visual editor and the playground read it. After a change to it, run `node scripts/readme-options.mjs` to update the option tables in this README; CI fails when they are out of date.
 
 `harness.html` is the playground page. The `Playground` workflow publishes it to GitHub Pages as `index.html`, together with `lovelace-rehoboam.js`, on every push to `main`. To run it locally, serve the repository folder and open the page:
 
