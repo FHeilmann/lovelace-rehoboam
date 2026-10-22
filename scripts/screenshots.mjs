@@ -88,14 +88,31 @@ try {
   await send('Page.enable');
   await send('Runtime.enable');
 
-  // Hero, dark: one still and frames for an animation
+  // Hero, dark: one still, then about 12 s of frames in which two callouts come and go
   await open(url({ ...DEMO, _lang: 'en' }), 960, 600, { header: false });
   await sleep(9000);
   await shot('hero-dark.png');
-  for (let i = 0; i < 48; i++) {
-    const t0 = Date.now();
+  await open(url({ ...DEMO, transition_tau: 1.2, _lang: 'en' }), 960, 600, { header: false });
+  await sleep(7000);
+  const simulate = (entity, change) => evaluate(`(() => {
+    const e = ENTS.find(x => x.entity === ${JSON.stringify(entity)});
+    Object.assign(e, ${JSON.stringify(change)});
+    pushStates();
+    return true;
+  })()`);
+  const SCRIPT = {
+    8: () => simulate('sensor.humidity', { _div: 0.04 }),
+    32: () => simulate('person.alex', { _state: 'not_home' }),
+    56: () => simulate('sensor.humidity', { _div: 0.45 }),
+    76: () => simulate('person.alex', { _state: 'work' })
+  };
+  const FRAMES = 96;
+  const start = Date.now();
+  for (let i = 0; i < FRAMES; i++) {
+    if (SCRIPT[i]) await SCRIPT[i]();
     await shot(`frames/f${String(i).padStart(3, '0')}.png`);
-    await sleep(Math.max(0, 125 - (Date.now() - t0)));
+    // Frames on a fixed 125 ms grid, so the animation plays in real time
+    await sleep(Math.max(0, start + (i + 1) * 125 - Date.now()));
   }
 
   // Light theme
