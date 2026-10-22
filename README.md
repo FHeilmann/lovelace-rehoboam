@@ -4,19 +4,19 @@
 [![HACS Validation](https://github.com/FHeilmann/lovelace-rehoboam/actions/workflows/validate.yml/badge.svg)](https://github.com/FHeilmann/lovelace-rehoboam/actions/workflows/validate.yml)
 [![GitHub Release](https://img.shields.io/github/v/release/FHeilmann/lovelace-rehoboam?style=for-the-badge)](https://github.com/FHeilmann/lovelace-rehoboam/releases)
 
-A WebGL custom Lovelace card inspired by the **Westworld Rehoboam** AI system. It shows the state of your home as divergence waves around a central eclipse. Each entity pushes up a summit on the ring as it moves from its baseline toward its critical value, and a callout labels it.
+A WebGL custom Lovelace card inspired by the **Westworld Rehoboam** AI system. It shows the state of your home as divergence waves around a central eclipse. Each entity pushes up a peak on the ring as it moves from its baseline toward its critical value, and a callout labels it.
 
 ---
 
 ## Features
 
-- **Layered wave masses**: 7 layers of lumpy masses with crisp, anti-aliased edges and rim lines. A diverging entity builds up a gradual mountain with one summit. Fold shadows and concentric rings that wobble in and out give the masses depth.
-- **Ambient masses**: small masses rise and fall at random places in the calm parts of the ring, so the ring never looks frozen.
+- **Layered wave strata**: 7 layers of strata with crisp, anti-aliased edges and rim lines. A diverging entity builds up a gradual mountain with one peak. Fold shadows and concentric rings that wobble in and out give the strata depth.
+- **Ambient strata**: small strata rise and fall at random places in the calm parts of the ring, so the ring never looks frozen.
 - **Eclipse that follows**: the eclipse corona turns toward the entity with the most divergence, or stays at a fixed angle.
 - **Callouts with three states**: hidden, monitoring and divergence, each with its own threshold. The leader line draws out from the marker, and the label fades in when the line turns its corner. Labels stack so they do not overlap, and they stay inside the card edges as far as possible.
 - **Tap and hold actions**: the centre of the ring and each callout take the standard Home Assistant actions (`more-info`, `toggle`, `navigate`, `url`, `perform-action`, `fire-dom-event`, for example a browser_mod popup).
 - **Directional baseline-to-critical mapping**: both high-is-bad (CPU temperature) and low-is-bad (battery, free disk space) sensors work.
-- **Visual editor**: entity pickers, action pickers, sliders and collapsible entity sections.
+- **Visual editor**: entity pickers, action pickers, a slider and a number box for each ranged setting, a tooltip on each setting, and collapsible entity sections.
 - **Dark, light and auto themes**: `auto` follows the dark mode setting of Home Assistant.
 - **Made for low-end tablets**: the card renders at a reduced resolution, uses a low frame rate when the ring is calm, and pauses when it is off screen or in a background tab. The per-frame CPU work stays well below 1 ms on a desktop for 5 entities.
 - **No build step**: a single native Web Component file with no dependencies. The default label font (Barlow Condensed) loads from Google Fonts. Set `font_family` to a local font to make the card fully offline.
@@ -135,18 +135,18 @@ The card-level `monitoring_threshold` and `divergence_threshold` are fractions (
 | `eclipse_angle` | number or `auto` | `auto` | Empty or `auto`: the eclipse turns toward the most diverged entity. A number fixes the angle in degrees (`0` – `360`) |
 | `eclipse_intensity` | number | `1.0` | Brightness of the eclipse crescent and corona (`0.0` – `2.0`) |
 | `ray_intensity` | number | `0.35` | Outer ray shimmer intensity (`0.0` – `1.0`) |
-| `facet_shading` | number | `0.6` | Strength of the fold shadows on the masses (`0.0` – `1.0`) |
-| `ring_shading` | boolean | `true` | Concentric shading rings that wobble in and out across the masses |
+| `facet_shading` | number | `0.6` | Strength of the fold shadows on the strata (`0.0` – `1.0`) |
+| `ring_shading` | boolean | `true` | Concentric shading rings that wobble in and out across the strata |
 | `amplitude_scale` | number | `1.25` | Global wave height multiplier (`0.1` – `3.0`) |
-| `mass_width` | number | `1.0` | Width of the lumpy masses below a summit (`0.3` – `2.5`) |
-| `summit_width` | number | `1.0` | Width of the main summit (`0.4` – `3.0`) |
-| `summit_sharpness` | number | `0` | `0` gives a flat-topped dome, `1` a pointed peak (`0.0` – `1.0`) |
-| `summit_height` | number | `1.0` | How far the main summit stands out from the masses (`0.3` – `1.43`) |
+| `strata_width` | number | `1.0` | Width of the strata below a peak (`0.3` – `2.5`) |
+| `peak_width` | number | `1.0` | Width of the peak (`0.4` – `3.0`) |
+| `peak_sharpness` | number | `0` | `0` gives a flat-topped dome, `1` a pointed tip (`0.0` – `1.0`) |
+| `peak_height` | number | `1.0` | How far the peak stands out from the strata (`0.3` – `1.43`) |
 | `baseline_height` | number | `1.0` | Height of the thin band of waves around the full ring (`0` – `5`, `0` turns it off) |
-| `ambient_count` | number | `3` | Maximum number of ambient masses at one time (`0` – `12`, `0` turns them off) |
-| `ambient_size` | number | `0.3` | Peak height of an ambient mass (`0.0` – `1.0`) |
-| `ambient_width` | number | `1.0` | Width of an ambient mass (`0.3` – `2.5`) |
-| `ambient_lifetime` | number | `25` | Seconds one ambient mass takes to rise and fall (`4` – `300`) |
+| `ambient_count` | number | `3` | Maximum number of ambient strata at one time (`0` – `12`, `0` turns them off) |
+| `ambient_size` | number | `0.3` | Maximum height of one ambient stratum (`0.0` – `1.0`) |
+| `ambient_width` | number | `1.0` | Width of one ambient stratum (`0.3` – `2.5`) |
+| `ambient_lifetime` | number | `25` | Seconds one ambient stratum takes to rise and fall (`4` – `300`) |
 | `transition_tau` | number | `2.2` | Time constant in seconds for smooth state transitions (`0.2` – `60`) |
 | `ring_scale` | number | `0.42` | Ring radius relative to the card size (`0.1` – `1.0`) |
 | `resolution_scale` | number | `0.65` | Canvas render resolution factor (`0.1` – `2.0`) |

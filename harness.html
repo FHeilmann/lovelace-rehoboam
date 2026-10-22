@@ -61,7 +61,7 @@ const state = {
   theme_mode: 'dark', _ha_dark: true,
   _eclipse_follow: true, eclipse_angle: 180, _eclipse_override: false, test_divergence: 1,
   eclipse_intensity: 1.0, ray_intensity: 0.35,
-  amplitude_scale: 1.25, summit_width: 1.0, summit_sharpness: 0, summit_height: 1.0, mass_width: 1.0, baseline_height: 1.0,
+  amplitude_scale: 1.25, peak_width: 1.0, peak_sharpness: 0, peak_height: 1.0, strata_width: 1.0, baseline_height: 1.0,
   facet_shading: 0.6, ring_shading: true,
   ambient_count: 3, ambient_size: 0.3, ambient_width: 1.0, ambient_lifetime: 25,
   divergence_threshold: 0.15, _monitoring_on: false, monitoring_threshold: 0.1, transition_tau: 0.6,
@@ -172,17 +172,17 @@ slider('Eclipse angle (fixed)', 'eclipse_angle', 0, 360, 1);
 slider('Eclipse intensity', 'eclipse_intensity', 0, 2, 0.05);
 slider('Corona rays', 'ray_intensity', 0, 1, 0.05);
 
-h('Waves and masses');
+h('Waves and strata');
 slider('Wave amplitude scale', 'amplitude_scale', 0.4, 2, 0.05);
-slider('Main lump width', 'summit_width', 0.4, 3, 0.05);
-slider('Main lump spikiness', 'summit_sharpness', 0, 1, 0.05);
-slider('Main lump prominence', 'summit_height', 0.3, 1.43, 0.01);
-slider('Lump mass width', 'mass_width', 0.3, 2.5, 0.05);
+slider('Peak width', 'peak_width', 0.4, 3, 0.05);
+slider('Peak sharpness', 'peak_sharpness', 0, 1, 0.05);
+slider('Peak prominence', 'peak_height', 0.3, 1.43, 0.01);
+slider('Strata width', 'strata_width', 0.3, 2.5, 0.05);
 slider('Baseline wave height', 'baseline_height', 0, 5, 0.1);
 slider('Spike 3D shading', 'facet_shading', 0, 1, 0.05);
 check('Wobbling ring shading', 'ring_shading');
 
-h('Ambient masses');
+h('Ambient strata');
 slider('Count', 'ambient_count', 0, 12, 1);
 slider('Size', 'ambient_size', 0, 1, 0.01);
 slider('Width', 'ambient_width', 0.3, 2.5, 0.05);
