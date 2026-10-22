@@ -1,5 +1,12 @@
 # Changelog
 
+## [2026.10.1](https://github.com/FHeilmann/lovelace-rehoboam/compare/2026.10.0...2026.10.1) (2026-10-22)
+
+
+### Documentation
+
+* credit Westworld and Emil Besirevic ([b394ef8](https://github.com/FHeilmann/lovelace-rehoboam/commit/b394ef8f283766f1c1813af94a8d428c17128539))
+
 ## [2026.10.0](https://github.com/FHeilmann/lovelace-rehoboam/compare/0.18.0...2026.10.0) (2026-10-22)
 
 
