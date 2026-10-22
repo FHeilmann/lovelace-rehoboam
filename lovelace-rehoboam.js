@@ -528,10 +528,10 @@ const ENTITY_SETTINGS = [
   { key: 'angle', group: 'callout', type: 'number', label: 'Angle (°, empty = auto)', min: 0, max: 360, step: 1, nullable: true, placeholder: 'Auto', defaultText: 'auto-spaced',
     tip: 'Position of the callout on the ring in degrees (0 = right, counter-clockwise). Leave empty to space the callouts evenly.' },
   { key: 'monitoring_threshold', group: 'callout', type: 'threshold', label: 'Monitoring threshold (sensor value)', mapLabel: 'Monitoring threshold (0–1)',
-    nullable: true, placeholder: 'Card setting', defaultText: 'card setting',
+    nullable: true, placeholder: 'Card', defaultText: 'card setting',
     tip: 'Sensor value where this callout appears as MONITORING; with a state map, a divergence value (0-1). Leave empty to use the card setting.' },
   { key: 'divergence_threshold', group: 'callout', type: 'threshold', label: 'Divergence threshold (sensor value)', mapLabel: 'Divergence threshold (0–1)',
-    nullable: true, placeholder: 'Card setting', defaultText: 'card setting',
+    nullable: true, placeholder: 'Card', defaultText: 'card setting',
     tip: 'Sensor value where this callout changes to DIVERGENCE; with a state map, a divergence value (0-1). Leave empty to use the card setting.' },
   { key: 'always_visible', group: 'callout', type: 'bool', label: 'Always visible callout', default: false,
     tip: 'Show the callout as MONITORING also when it would be hidden.' },
@@ -626,8 +626,8 @@ const TRANSLATIONS = {
       state_map: ['Zustandszuordnung', 'Divergenz (0-1) für jeden aufgeführten Zustand, zum Beispiel home 0 und not_home 1. Ein aufgeführter Zustand ignoriert Grundwert und kritischen Wert. Mit einer Zuordnung sind die Entitätsschwellen Divergenzwerte (0-1).'],
       unit: ['Einheit', 'Einheit hinter dem Wert. Leer nutzt die Einheit der Entität.', 'Einheit der Entität'],
       angle: ['Winkel (°, leer = auto)', 'Position der Beschriftung auf dem Ring in Grad (0 = rechts, gegen den Uhrzeigersinn). Leer lassen, um die Beschriftungen gleichmäßig zu verteilen.', 'Auto'],
-      monitoring_threshold: ['Überwachungsschwelle (Sensorwert)', 'Sensorwert, ab dem diese Beschriftung als ÜBERWACHUNG erscheint; mit einer Zustandszuordnung ein Divergenzwert (0-1). Leer nutzt die Karteneinstellung.', 'Karteneinstellung', 'Überwachungsschwelle (0–1)'],
-      divergence_threshold: ['Divergenzschwelle (Sensorwert)', 'Sensorwert, ab dem diese Beschriftung zu DIVERGENZ wechselt; mit einer Zustandszuordnung ein Divergenzwert (0-1). Leer nutzt die Karteneinstellung.', 'Karteneinstellung', 'Divergenzschwelle (0–1)'],
+      monitoring_threshold: ['Überwachungsschwelle (Sensorwert)', 'Sensorwert, ab dem diese Beschriftung als ÜBERWACHUNG erscheint; mit einer Zustandszuordnung ein Divergenzwert (0-1). Leer nutzt die Karteneinstellung.', 'Karte', 'Überwachungsschwelle (0–1)'],
+      divergence_threshold: ['Divergenzschwelle (Sensorwert)', 'Sensorwert, ab dem diese Beschriftung zu DIVERGENZ wechselt; mit einer Zustandszuordnung ein Divergenzwert (0-1). Leer nutzt die Karteneinstellung.', 'Karte', 'Divergenzschwelle (0–1)'],
       always_visible: ['Beschriftung immer sichtbar', 'Zeigt die Beschriftung als ÜBERWACHUNG, auch wenn sie sonst verborgen wäre.'],
       tap_action: ['Tippaktion', 'Aktion beim Tippen auf diese Beschriftung. Standard öffnet Mehr-Info.'],
       hold_action: ['Halteaktion', 'Aktion beim Drücken und Halten dieser Beschriftung.']
@@ -696,8 +696,8 @@ const TRANSLATIONS = {
       state_map: ["Correspondance d'états", "Divergence (0-1) de chaque état listé, par exemple home 0 et not_home 1. Un état listé ignore la valeur de base et la valeur critique. Avec une correspondance, les seuils de l'entité sont des valeurs de divergence (0-1)."],
       unit: ['Unité', "Unité affichée après la valeur. Vide utilise l'unité de l'entité.", "Unité de l'entité"],
       angle: ['Angle (°, vide = auto)', "Position de l'étiquette sur l'anneau en degrés (0 = droite, sens antihoraire). Laissez vide pour répartir les étiquettes régulièrement.", 'Auto'],
-      monitoring_threshold: ['Seuil de surveillance (valeur du capteur)', "Valeur du capteur à partir de laquelle cette étiquette apparaît en SURVEILLANCE ; avec une correspondance d'états, une valeur de divergence (0-1). Vide utilise le réglage de la carte.", 'Réglage de la carte', 'Seuil de surveillance (0–1)'],
-      divergence_threshold: ['Seuil de divergence (valeur du capteur)', "Valeur du capteur à partir de laquelle cette étiquette passe à DIVERGENCE ; avec une correspondance d'états, une valeur de divergence (0-1). Vide utilise le réglage de la carte.", 'Réglage de la carte', 'Seuil de divergence (0–1)'],
+      monitoring_threshold: ['Seuil de surveillance (valeur du capteur)', "Valeur du capteur à partir de laquelle cette étiquette apparaît en SURVEILLANCE ; avec une correspondance d'états, une valeur de divergence (0-1). Vide utilise le réglage de la carte.", 'Carte', 'Seuil de surveillance (0–1)'],
+      divergence_threshold: ['Seuil de divergence (valeur du capteur)', "Valeur du capteur à partir de laquelle cette étiquette passe à DIVERGENCE ; avec une correspondance d'états, une valeur de divergence (0-1). Vide utilise le réglage de la carte.", 'Carte', 'Seuil de divergence (0–1)'],
       always_visible: ['Étiquette toujours visible', "Affiche l'étiquette en SURVEILLANCE même quand elle serait masquée."],
       tap_action: ["Action d'appui", "Action lors d'un appui sur cette étiquette. Par défaut, ouvre plus d'infos."],
       hold_action: ['Action de maintien', "Action lors d'un appui long sur cette étiquette."]
@@ -766,8 +766,8 @@ const TRANSLATIONS = {
       state_map: ['Asignación de estados', 'Divergencia (0-1) de cada estado de la lista, por ejemplo home 0 y not_home 1. Un estado de la lista ignora el valor base y el crítico. Con una asignación, los umbrales de la entidad son valores de divergencia (0-1).'],
       unit: ['Unidad', 'Unidad que se muestra tras el valor. Vacío usa la unidad de la entidad.', 'Unidad de la entidad'],
       angle: ['Ángulo (°, vacío = auto)', 'Posición de la etiqueta en el anillo en grados (0 = derecha, sentido antihorario). Déjalo vacío para repartir las etiquetas de forma uniforme.', 'Auto'],
-      monitoring_threshold: ['Umbral de monitorización (valor del sensor)', 'Valor del sensor a partir del cual esta etiqueta aparece como MONITORIZACIÓN; con una asignación de estados, un valor de divergencia (0-1). Vacío usa el ajuste de la tarjeta.', 'Ajuste de la tarjeta', 'Umbral de monitorización (0–1)'],
-      divergence_threshold: ['Umbral de divergencia (valor del sensor)', 'Valor del sensor a partir del cual esta etiqueta pasa a DIVERGENCIA; con una asignación de estados, un valor de divergencia (0-1). Vacío usa el ajuste de la tarjeta.', 'Ajuste de la tarjeta', 'Umbral de divergencia (0–1)'],
+      monitoring_threshold: ['Umbral de monitorización (valor del sensor)', 'Valor del sensor a partir del cual esta etiqueta aparece como MONITORIZACIÓN; con una asignación de estados, un valor de divergencia (0-1). Vacío usa el ajuste de la tarjeta.', 'Tarjeta', 'Umbral de monitorización (0–1)'],
+      divergence_threshold: ['Umbral de divergencia (valor del sensor)', 'Valor del sensor a partir del cual esta etiqueta pasa a DIVERGENCIA; con una asignación de estados, un valor de divergencia (0-1). Vacío usa el ajuste de la tarjeta.', 'Tarjeta', 'Umbral de divergencia (0–1)'],
       always_visible: ['Etiqueta siempre visible', 'Muestra la etiqueta como MONITORIZACIÓN también cuando estaría oculta.'],
       tap_action: ['Acción al tocar', 'Acción al tocar esta etiqueta. Por defecto abre más información.'],
       hold_action: ['Acción al mantener', 'Acción al mantener pulsada esta etiqueta.']
@@ -836,8 +836,8 @@ const TRANSLATIONS = {
       state_map: ['Statustoewijzing', 'Divergentie (0-1) voor elke vermelde status, bijvoorbeeld home 0 en not_home 1. Een vermelde status negeert basiswaarde en kritieke waarde. Met een toewijzing zijn de drempels van de entiteit divergentiewaarden (0-1).'],
       unit: ['Eenheid', 'Eenheid achter de waarde. Leeg gebruikt de eenheid van de entiteit.', 'Eenheid van de entiteit'],
       angle: ['Hoek (°, leeg = auto)', 'Positie van het label op de ring in graden (0 = rechts, tegen de klok in). Laat leeg om de labels gelijkmatig te verdelen.', 'Auto'],
-      monitoring_threshold: ['Bewakingsdrempel (sensorwaarde)', 'Sensorwaarde waarbij dit label als BEWAKING verschijnt; met een statustoewijzing een divergentiewaarde (0-1). Leeg gebruikt de kaartinstelling.', 'Kaartinstelling', 'Bewakingsdrempel (0–1)'],
-      divergence_threshold: ['Divergentiedrempel (sensorwaarde)', 'Sensorwaarde waarbij dit label naar DIVERGENTIE gaat; met een statustoewijzing een divergentiewaarde (0-1). Leeg gebruikt de kaartinstelling.', 'Kaartinstelling', 'Divergentiedrempel (0–1)'],
+      monitoring_threshold: ['Bewakingsdrempel (sensorwaarde)', 'Sensorwaarde waarbij dit label als BEWAKING verschijnt; met een statustoewijzing een divergentiewaarde (0-1). Leeg gebruikt de kaartinstelling.', 'Kaart', 'Bewakingsdrempel (0–1)'],
+      divergence_threshold: ['Divergentiedrempel (sensorwaarde)', 'Sensorwaarde waarbij dit label naar DIVERGENTIE gaat; met een statustoewijzing een divergentiewaarde (0-1). Leeg gebruikt de kaartinstelling.', 'Kaart', 'Divergentiedrempel (0–1)'],
       always_visible: ['Label altijd zichtbaar', 'Toont het label als BEWAKING, ook als het anders verborgen zou zijn.'],
       tap_action: ['Tikactie', 'Actie bij tikken op dit label. Standaard opent meer info.'],
       hold_action: ['Vasthoudactie', 'Actie bij ingedrukt houden van dit label.']
@@ -906,8 +906,8 @@ const TRANSLATIONS = {
       state_map: ['Mappa degli stati', "Divergenza (0-1) per ogni stato elencato, per esempio home 0 e not_home 1. Uno stato elencato ignora valore base e valore critico. Con una mappa, le soglie dell'entità sono valori di divergenza (0-1)."],
       unit: ['Unità', "Unità mostrata dopo il valore. Vuoto usa l'unità dell'entità.", "Unità dell'entità"],
       angle: ['Angolo (°, vuoto = auto)', "Posizione dell'etichetta sull'anello in gradi (0 = destra, senso antiorario). Lascia vuoto per distribuire le etichette in modo uniforme.", 'Auto'],
-      monitoring_threshold: ['Soglia di monitoraggio (valore del sensore)', "Valore del sensore da cui questa etichetta appare come MONITORAGGIO; con una mappa degli stati, un valore di divergenza (0-1). Vuoto usa l'impostazione della scheda.", 'Impostazione della scheda', 'Soglia di monitoraggio (0–1)'],
-      divergence_threshold: ['Soglia di divergenza (valore del sensore)', "Valore del sensore da cui questa etichetta passa a DIVERGENZA; con una mappa degli stati, un valore di divergenza (0-1). Vuoto usa l'impostazione della scheda.", 'Impostazione della scheda', 'Soglia di divergenza (0–1)'],
+      monitoring_threshold: ['Soglia di monitoraggio (valore del sensore)', "Valore del sensore da cui questa etichetta appare come MONITORAGGIO; con una mappa degli stati, un valore di divergenza (0-1). Vuoto usa l'impostazione della scheda.", 'Scheda', 'Soglia di monitoraggio (0–1)'],
+      divergence_threshold: ['Soglia di divergenza (valore del sensore)', "Valore del sensore da cui questa etichetta passa a DIVERGENZA; con una mappa degli stati, un valore di divergenza (0-1). Vuoto usa l'impostazione della scheda.", 'Scheda', 'Soglia di divergenza (0–1)'],
       always_visible: ['Etichetta sempre visibile', "Mostra l'etichetta come MONITORAGGIO anche quando sarebbe nascosta."],
       tap_action: ['Azione al tocco', 'Azione al tocco di questa etichetta. Il predefinito apre più informazioni.'],
       hold_action: ['Azione alla pressione prolungata', 'Azione quando tieni premuta questa etichetta.']
@@ -1485,6 +1485,9 @@ class RehoboamCardEditor extends HTMLElement {
           font-size: 11px;
           color: var(--secondary-text-color, #888);
           margin-top: 4px;
+        }
+        .section > .hint {
+          margin: -4px 0 12px;
         }
         .field > label {
           position: relative;
