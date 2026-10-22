@@ -16,6 +16,7 @@ A WebGL custom Lovelace card inspired by the **Westworld Rehoboam** AI system. I
 - **Ambient strata**: small strata rise and fall at random places in the calm parts of the ring, so the ring never looks frozen.
 - **Eclipse that follows**: the eclipse corona turns toward the entity with the most divergence, or stays at a fixed angle.
 - **Callouts with three states**: hidden, monitoring and divergence, each with its own threshold. The leader line draws out from the marker, and the label fades in when the line turns its corner. Labels stack so they do not overlap, and they stay inside the card edges as far as possible.
+- **Title and live subtitle**: an optional title and subtitle in the top left corner. The subtitle accepts Home Assistant templates and updates when the result changes.
 - **Tap and hold actions**: the centre of the ring and each callout take the standard Home Assistant actions (`more-info`, `toggle`, `navigate`, `url`, `perform-action`, `fire-dom-event`, for example a browser_mod popup).
 - **Directional baseline-to-critical mapping**: both high-is-bad (CPU temperature) and low-is-bad (battery, free disk space) sensors work.
 - **Visual editor**: entity pickers, action pickers, a slider and a number box for each ranged setting, a tooltip on each setting, and collapsible entity sections.
@@ -64,6 +65,8 @@ The [playground](https://fheilmann.github.io/lovelace-rehoboam/) runs the card i
 
 ```yaml
 type: custom:lovelace-rehoboam
+title: Home
+subtitle: "{{ states('sensor.outside_temperature') }} °C outside · {{ states('person.alex') }}"
 theme_mode: auto
 height: 500px
 eclipse_intensity: 1.0
@@ -125,6 +128,10 @@ Each entity has a divergence between 0 (at `baseline`) and 1 (at `critical`). It
 
 The card-level `monitoring_threshold` and `divergence_threshold` are fractions (`0.0` – `1.0`) of the range between baseline and critical. The entity-level thresholds are values in the sensor's own unit, for example `70` for 70% humidity. They work in both directions. For an entity with a `state_map`, the entity-level thresholds are divergence values (`0.0` – `1.0`) instead, the same scale as the map. Without any monitoring threshold there is no monitoring state, and the callout is hidden below the divergence threshold.
 
+### Title and Subtitle
+
+`title` and `subtitle` show in the top left corner of the card. The subtitle accepts [Home Assistant templates](https://www.home-assistant.io/docs/configuration/templating/): Home Assistant renders the template and sends a new result whenever it changes, so the card does no polling. The variable `user` holds the name of the current user. A template error leaves the subtitle empty and logs a warning in the browser console. The playground renders only `states('…')` and `state_attr('…', '…')`.
+
 ### Localization
 
 The card shows its callout text in the Home Assistant language of the user, or in the language that `language` sets. It ships English, German, French, Spanish, Dutch and Italian; other languages fall back to English.
@@ -147,6 +154,9 @@ The editor, the playground and these tables use the same settings list in `lovel
 | Option | Type | Default | Range | Description |
 | ------ | ---- | ------- | ----- | ----------- |
 | `type` | string | **Required** | | `custom:lovelace-rehoboam` |
+| **Title** | | | | |
+| `title` | string | — |  | Text in the top left corner of the card. Empty shows no title. |
+| `subtitle` | template | — |  | Text below the title. Accepts Home Assistant templates, for example {{ states("sensor.outside_temperature") }}; the card updates it when the result changes. |
 | **Appearance** | | | | |
 | `theme_mode` | string | `dark` | `dark`, `light`, `auto` | Dark shows a night eclipse, light shows ink on paper. Auto follows the dark mode setting of Home Assistant. |
 | `height` | string | `500px` |  | Card height in CSS units, for example 500px, or 100vh for a full-screen panel view. |

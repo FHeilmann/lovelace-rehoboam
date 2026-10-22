@@ -31,7 +31,8 @@ body.nopanel #panel{display:none}
 .ctl{display:flex;gap:8px;align-items:center;margin-top:3px}
 .ctl input[type=range]{flex:1;min-width:0;accent-color:var(--accent)}
 .row.unset input[type=range]{opacity:.4}
-input[type=number],input[type=text],select{padding:4px 6px;background:var(--field);border:1px solid var(--line);color:var(--text);border-radius:4px;font:inherit;min-width:0}
+textarea{width:100%;resize:vertical;font:12px/1.4 ui-monospace,monospace}
+input[type=number],input[type=text],select,textarea{padding:4px 6px;background:var(--field);border:1px solid var(--line);color:var(--text);border-radius:4px;font:inherit;min-width:0}
 .ctl input[type=number]{width:78px;flex:none}
 .row>input[type=text],.row>select,.row>.ctl>select{width:100%}
 .ctl select{flex:1}
@@ -123,6 +124,7 @@ const DEMO_ENTS = [
 // Texts of this page in each card language; the settings labels and tooltips come from the card
 const PAGE_TEXT = {
   en: {
+    templateNote: "The playground renders only states('…') and state_attr('…', '…'); Home Assistant renders the full template.",
     intro: 'Change the settings, move the simulated values, then copy the YAML into a manual card in your dashboard. Tap the centre or a callout to see its action.',
     install: 'Install', hidePanel: 'Hide panel', showPanel: 'Show panel', language: 'Language',
     simDark: 'Simulate Home Assistant dark mode', simDarkTip: 'Page only: the dark mode setting that theme Auto follows.',
@@ -137,6 +139,7 @@ const PAGE_TEXT = {
     actions: { '': 'Default', none: 'None', 'more-info': 'More info', toggle: 'Toggle', navigate: 'Navigate to a view', url: 'Open a URL', popup: 'browser_mod popup' }
   },
   de: {
+    templateNote: "Der Spielplatz rendert nur states('…') und state_attr('…', '…'); Home Assistant rendert das volle Template.",
     intro: 'Ändere die Einstellungen, bewege die simulierten Werte und kopiere dann das YAML in eine manuelle Karte deines Dashboards. Tippe auf die Mitte oder eine Beschriftung, um ihre Aktion zu sehen.',
     install: 'Installation', hidePanel: 'Bereich ausblenden', showPanel: 'Bereich einblenden', language: 'Sprache',
     simDark: 'Dunkelmodus von Home Assistant simulieren', simDarkTip: 'Nur auf dieser Seite: der Dunkelmodus, dem das Design Auto folgt.',
@@ -151,6 +154,7 @@ const PAGE_TEXT = {
     actions: { '': 'Standard', none: 'Keine', 'more-info': 'Mehr Infos', toggle: 'Umschalten', navigate: 'Zu einer Ansicht wechseln', url: 'URL öffnen', popup: 'browser_mod-Popup' }
   },
   fr: {
+    templateNote: "Le bac à sable ne rend que states('…') et state_attr('…', '…') ; Home Assistant rend le modèle complet.",
     intro: 'Modifiez les réglages, déplacez les valeurs simulées, puis copiez le YAML dans une carte manuelle de votre tableau de bord. Appuyez sur le centre ou une étiquette pour voir son action.',
     install: 'Installation', hidePanel: 'Masquer le panneau', showPanel: 'Afficher le panneau', language: 'Langue',
     simDark: 'Simuler le mode sombre de Home Assistant', simDarkTip: 'Page uniquement : le mode sombre que suit le thème Auto.',
@@ -165,6 +169,7 @@ const PAGE_TEXT = {
     actions: { '': 'Par défaut', none: 'Aucune', 'more-info': "Plus d'infos", toggle: 'Basculer', navigate: 'Aller à une vue', url: 'Ouvrir une URL', popup: 'Fenêtre browser_mod' }
   },
   es: {
+    templateNote: "El entorno de pruebas solo procesa states('…') y state_attr('…', '…'); Home Assistant procesa la plantilla completa.",
     intro: 'Cambia los ajustes, mueve los valores simulados y copia el YAML en una tarjeta manual de tu panel. Toca el centro o una etiqueta para ver su acción.',
     install: 'Instalación', hidePanel: 'Ocultar panel', showPanel: 'Mostrar panel', language: 'Idioma',
     simDark: 'Simular el modo oscuro de Home Assistant', simDarkTip: 'Solo esta página: el modo oscuro que sigue el tema Auto.',
@@ -179,6 +184,7 @@ const PAGE_TEXT = {
     actions: { '': 'Predeterminada', none: 'Ninguna', 'more-info': 'Más información', toggle: 'Alternar', navigate: 'Ir a una vista', url: 'Abrir una URL', popup: 'Ventana de browser_mod' }
   },
   nl: {
+    templateNote: "De speeltuin verwerkt alleen states('…') en state_attr('…', '…'); Home Assistant verwerkt het volledige sjabloon.",
     intro: 'Wijzig de instellingen, verschuif de gesimuleerde waarden en kopieer dan de YAML naar een handmatige kaart in je dashboard. Tik op het midden of een label om de actie te zien.',
     install: 'Installatie', hidePanel: 'Paneel verbergen', showPanel: 'Paneel tonen', language: 'Taal',
     simDark: 'Donkere modus van Home Assistant simuleren', simDarkTip: 'Alleen deze pagina: de donkere modus die thema Auto volgt.',
@@ -193,6 +199,7 @@ const PAGE_TEXT = {
     actions: { '': 'Standaard', none: 'Geen', 'more-info': 'Meer info', toggle: 'Schakelen', navigate: 'Naar een weergave', url: 'URL openen', popup: 'browser_mod-pop-up' }
   },
   it: {
+    templateNote: "Il playground elabora solo states('…') e state_attr('…', '…'); Home Assistant elabora il template completo.",
     intro: "Modifica le impostazioni, sposta i valori simulati e poi copia lo YAML in una scheda manuale della tua dashboard. Tocca il centro o un'etichetta per vederne l'azione.",
     install: 'Installazione', hidePanel: 'Nascondi pannello', showPanel: 'Mostra pannello', language: 'Lingua',
     simDark: 'Simula la modalità scura di Home Assistant', simDarkTip: 'Solo questa pagina: la modalità scura che segue il tema Auto.',
@@ -297,8 +304,37 @@ function hassStates() {
     const unit = obj.attributes.unit_of_measurement;
     return new Intl.NumberFormat(lang, { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(n) + (unit ? ' ' + unit : '');
   };
-  return { states, themes: { darkMode: state._ha_dark }, language: lang, locale: { language: lang }, formatEntityState };
+  return { states, themes: { darkMode: state._ha_dark }, language: lang, locale: { language: lang }, formatEntityState, connection: FAKE_CONNECTION };
 }
+// Stand-in for Home Assistant's render_template subscription: renders {{ states('id') }} and
+// {{ state_attr('id', 'attr') }}; anything else stays as written. Results follow the simulated values.
+const templateSubs = new Set();
+function renderTemplate(template) {
+  const states = hassStates().states;
+  return template.replace(/\{\{\s*(.*?)\s*\}\}/g, (all, expr) => {
+    let m = expr.match(/^states\(\s*['"]([^'"]+)['"]\s*\)$/);
+    if (m) return states[m[1]] ? states[m[1]].state : 'unknown';
+    m = expr.match(/^state_attr\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*\)$/);
+    if (m) return states[m[1]] && m[2] in states[m[1]].attributes ? String(states[m[1]].attributes[m[2]]) : 'None';
+    return all;
+  });
+}
+const FAKE_CONNECTION = {
+  subscribeMessage(callback, msg) {
+    if (msg.type !== 'render_template') return Promise.reject(new Error('not supported here'));
+    const sub = { callback, template: msg.template, last: null };
+    templateSubs.add(sub);
+    setTimeout(() => refreshTemplates(), 0);
+    return Promise.resolve(() => templateSubs.delete(sub));
+  }
+};
+function refreshTemplates() {
+  templateSubs.forEach(sub => {
+    const result = renderTemplate(sub.template);
+    if (result !== sub.last) { sub.last = result; sub.callback({ result }); }
+  });
+}
+
 let pending = false;
 function apply() {
   renderYaml();
@@ -307,9 +343,10 @@ function apply() {
   requestAnimationFrame(() => {
     pending = false;
     cards.forEach((c, i) => { if (c) { c.setConfig(cardConfig(i)); c.hass = hassStates(); } });
+    refreshTemplates();
   });
 }
-function pushStates() { cards.forEach(c => c && (c.hass = hassStates())); }
+function pushStates() { cards.forEach(c => c && (c.hass = hassStates())); refreshTemplates(); }
 
 // ---- controls ----
 function infoIcon(text) {
@@ -372,6 +409,15 @@ function text(parent, label, key, placeholder, { obj = state, onChange = apply, 
   inp.setAttribute('aria-label', label);
   inp[live ? 'oninput' : 'onchange'] = () => { obj[key] = inp.value.trim() || null; onChange(); };
   row.appendChild(inp);
+  parent.appendChild(row);
+}
+function textArea(parent, label, key, placeholder, { obj = state, onChange = apply, tip } = {}) {
+  const row = el('div', 'row');
+  row.appendChild(labelEl(label, tip));
+  const area = el('textarea'); area.rows = 2; area.placeholder = placeholder; area.value = obj[key] ?? '';
+  area.setAttribute('aria-label', label);
+  area.oninput = () => { obj[key] = area.value || null; onChange(); };
+  row.appendChild(area);
   parent.appendChild(row);
 }
 function plainNum(parent, label, key, { obj, onChange, tip }) {
@@ -670,6 +716,7 @@ function buildPanel() {
         case 'text': case 'entity':
           text(panel, st.label, st.key, st.placeholder || '', st.key === 'height' ? { tip: `${st.tip} ${P.heightNote}` } : opts);
           break;
+        case 'template': textArea(panel, st.label, st.key, st.placeholder || '', { tip: `${st.tip} ${P.templateNote}` }); break;
         case 'bool': check(panel, st.label, st.key, opts); break;
         case 'action': actionField(panel, st.label, st.key, opts); break;
       }
@@ -719,6 +766,8 @@ function init() {
   state = { _ha_dark: true };
   CARD_KEYS.forEach(k => { state[k] = k in DEFAULTS ? DEFAULTS[k] : null; });
   ENTS = DEMO_ENTS.map(e => ({ ...e }));
+  state.title = 'Rehoboam';
+  state.subtitle = "Indoor {{ states('sensor.temperature') }} °C · Alex: {{ states('person.alex') }}";
   const shared = loadShared();
   if (shared) {
     CARD_KEYS.forEach(k => { if (k in shared) state[k] = shared[k]; });
