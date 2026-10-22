@@ -368,7 +368,7 @@ console.info(
   'color: #181820; background: #EAEAF0; font-weight: 700; padding: 2px 6px; border-radius: 0 4px 4px 0;'
 );
 
-// Escape user-provided config values before interpolating into innerHTML
+// Escapes user-provided config values before they go into innerHTML
 function esc(value) {
   return String(value ?? '')
     .replace(/&/g, '&amp;')
