@@ -1,0 +1,24 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "simple",
+  "include-v-in-tag": false,
+  "include-component-in-tag": false,
+  "versioning": "always-bump-patch",
+  "changelog-sections": [
+    { "type": "feat", "section": "Features" },
+    { "type": "fix", "section": "Bug fixes" },
+    { "type": "perf", "section": "Performance" },
+    { "type": "refactor", "section": "Code changes" },
+    { "type": "docs", "section": "Documentation" },
+    { "type": "style", "section": "Styling", "hidden": true },
+    { "type": "chore", "section": "Chores", "hidden": true },
+    { "type": "ci", "section": "CI", "hidden": true },
+    { "type": "test", "section": "Tests", "hidden": true }
+  ],
+  "packages": {
+    ".": {
+      "package-name": "lovelace-rehoboam",
+      "extra-files": [{ "type": "generic", "path": "lovelace-rehoboam.js" }]
+    }
+  }
+}
