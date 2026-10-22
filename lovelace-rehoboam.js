@@ -360,7 +360,7 @@ function easeTimeForProgress(progress, [x1, y1, x2, y2]) {
   }
   return bez((lo + hi) * 0.5, x1, x2);
 }
-const CARD_VERSION = '0.16.0';
+const CARD_VERSION = '0.17.0';
 
 console.info(
   `%c LOVELACE-REHOBOAM %c v${CARD_VERSION} `,
@@ -456,6 +456,13 @@ const CARD_SETTINGS = [
     tip: 'Fraction (0-1) of the way from baseline to critical where a callout appears as MONITORING. Leave empty for no monitoring state.' },
   { key: 'transition_tau', section: 'callouts', type: 'number', label: 'Transition smoothing (s)', min: 0.2, max: 20, step: 0.1, default: 2.2,
     tip: 'Time constant in seconds of the smooth change when a value changes. Higher values give slower, calmer motion.' },
+  { key: 'language', section: 'callouts', type: 'select', label: 'Language', default: '', defaultText: 'auto',
+    options: [['', 'Auto (Home Assistant)'], ['en', 'English'], ['de', 'Deutsch'], ['fr', 'Français'], ['es', 'Español'], ['nl', 'Nederlands'], ['it', 'Italiano']],
+    tip: 'Language of the callout text and the value format. Auto follows the Home Assistant language.' },
+  { key: 'monitoring_label', section: 'callouts', type: 'text', label: 'Monitoring text', defaultText: 'MONITORING, translated',
+    tip: 'Text before the category on a monitoring callout. Empty uses the translation for the card language.' },
+  { key: 'divergence_label', section: 'callouts', type: 'text', label: 'Divergence text', defaultText: 'DIVERGENCE, translated',
+    tip: 'Text before the category on a diverging callout. Empty uses the translation for the card language.' },
   { key: 'font_family', section: 'callouts', type: 'text', label: 'Label font (CSS font-family)', placeholder: 'Barlow Condensed (default)', defaultText: 'Barlow Condensed',
     tip: 'CSS font family of the callout labels. The default Barlow Condensed loads from Google Fonts. Set a local font to keep the card offline.' },
   { key: 'font_size', section: 'callouts', type: 'number', label: 'Label font size (px)', min: 8, max: 32, step: 0.5, default: DEFAULT_FONT_SIZE,
@@ -489,7 +496,7 @@ const ENTITY_SETTINGS = [
     tip: 'Home Assistant entity that drives this callout.' },
   { key: 'name', type: 'text', label: 'Name', placeholder: 'Friendly name of the entity', defaultText: 'Friendly name',
     tip: 'Label text on the callout. Empty uses the friendly name of the entity.' },
-  { key: 'category', type: 'text', label: 'Category', default: 'SYSTEM ANOMALY', placeholder: 'SYSTEM ANOMALY',
+  { key: 'category', type: 'text', label: 'Category', placeholder: 'SYSTEM ANOMALY', defaultText: 'SYSTEM ANOMALY, translated',
     tip: 'Header text above the label, for example THERMAL VARIANCE.' },
   { key: 'baseline', type: 'plain', label: 'Baseline (divergence 0)', default: 0,
     tip: 'Value at which the entity is calm (divergence 0).' },
@@ -514,6 +521,403 @@ const ENTITY_SETTINGS = [
   { key: 'hold_action', type: 'action', label: 'Hold action', defaultText: 'none',
     tip: 'Action when you press and hold this callout.' }
 ];
+// ---- Localization ----
+// English lives in the settings list above. Each translation gives, per setting key,
+// [label, tooltip, placeholder, label with a state map]; missing entries fall back to English.
+// To add a language: copy one block, translate it, and add the language to LANGUAGES.
+const LANGUAGES = [['en', 'English'], ['de', 'Deutsch'], ['fr', 'Français'], ['es', 'Español'], ['nl', 'Nederlands'], ['it', 'Italiano']];
+// Text the card itself shows
+const CARD_TEXT = { monitoring: 'MONITORING', divergence: 'DIVERGENCE', category: 'SYSTEM ANOMALY', unavailable: 'UNAVAILABLE' };
+// Text of the visual editor outside the settings list
+const UI_TEXT = {
+  entities: 'Entities',
+  expandAll: 'Expand all',
+  collapseAll: 'Collapse all',
+  addEntity: '+ Add entity',
+  remove: 'Remove',
+  addState: '+ Add state',
+  unconfigured: 'Unconfigured',
+  yamlOnly: 'Set {key} in the YAML editor.',
+  entitiesHint: 'If critical is above baseline, high values diverge. If critical is below baseline (for example battery: baseline 100, critical 20), low values diverge. Below the monitoring threshold a callout is hidden ({monitoring} if always visible), from the monitoring threshold it shows {monitoring}, from the divergence threshold {divergence}.',
+  state: 'State',
+  divergenceOf: 'Divergence of {state}',
+  removeState: 'Remove {state}'
+};
+const TRANSLATIONS = {
+  de: {
+    card: { monitoring: 'ÜBERWACHUNG', divergence: 'DIVERGENZ', category: 'SYSTEMANOMALIE', unavailable: 'NICHT VERFÜGBAR' },
+    ui: {
+      entities: 'Entitäten', expandAll: 'Alle aufklappen', collapseAll: 'Alle zuklappen', addEntity: '+ Entität hinzufügen',
+      remove: 'Entfernen', addState: '+ Zustand hinzufügen', unconfigured: 'Nicht konfiguriert', yamlOnly: 'Lege {key} im YAML-Editor fest.',
+      entitiesHint: 'Liegt der kritische Wert über dem Grundwert, divergieren hohe Werte. Liegt er darunter (zum Beispiel Akku: Grundwert 100, kritisch 20), divergieren niedrige Werte. Unter der Überwachungsschwelle ist eine Beschriftung verborgen ({monitoring}, wenn immer sichtbar), ab der Überwachungsschwelle zeigt sie {monitoring}, ab der Divergenzschwelle {divergence}.',
+      state: 'Zustand', divergenceOf: 'Divergenz von {state}', removeState: '{state} entfernen'
+    },
+    sections: {
+      theme: 'Design und Eklipse', waves: 'Wellen und Schichten', ambient: 'Umgebungsschichten', callouts: 'Beschriftungen',
+      centre: 'Ringmitte', layout: 'Layout und Leistung',
+      centre_hint: 'Tippe auf die Mitte des Rings oder halte sie gedrückt. Für ein browser_mod-Popup nutze die Aktion „fire-dom-event“ mit einem browser_mod-Block in YAML.'
+    },
+    options: { theme_mode: { dark: 'Dunkel', light: 'Hell', auto: 'Auto' }, language: { '': 'Auto (Home Assistant)' } },
+    settings: {
+      theme_mode: ['Design', 'Dunkel zeigt eine nächtliche Eklipse, hell zeigt Tinte auf Papier. Auto folgt dem Dunkelmodus von Home Assistant.'],
+      eclipse_angle: ['Eklipsenwinkel (°, leer = folgen)', 'Richtung des Eklipsenleuchtens in Grad (0 = rechts, gegen den Uhrzeigersinn). Leer lassen, damit sich das Leuchten zur Entität mit der größten Divergenz dreht.', 'Folgen'],
+      eclipse_intensity: ['Eklipsenintensität', 'Helligkeit der Eklipsensichel und ihrer Korona.'],
+      ray_intensity: ['Koronastrahlen', 'Stärke der feinen Strahlen, die vom Ring nach außen schimmern.'],
+      test_divergence: ['Testdivergenz (leer = live)', 'Nur zur Vorschau: setzt das Eklipsenleuchten auf diese Divergenz. Leer lassen, um die Live-Werte zu nutzen.', 'Live'],
+      amplitude_scale: ['Wellenamplitude', 'Höhenfaktor für alle Wellen und Schichten.'],
+      peak_width: ['Gipfelbreite', 'Breite des Gipfels, der über einer divergierenden Entität aufsteigt.'],
+      peak_sharpness: ['Gipfelschärfe (0 = Kuppel, 1 = Spitze)', 'Form des Gipfels: 0 ist eine abgeflachte Kuppel, 1 eine scharfe Spitze.'],
+      peak_height: ['Gipfelhöhe', 'Wie weit der Gipfel über die Schichten darunter hinausragt.'],
+      strata_width: ['Schichtbreite', 'Breite der Schichten unter jedem Gipfel.'],
+      baseline_height: ['Grundwellenhöhe (0 = glatter Ring)', 'Höhe des schmalen Wellenbands um den ganzen Ring. 0 ergibt einen glatten Ring.'],
+      facet_shading: ['Faltenschattierung', 'Stärke der Faltenschatten, die die Schichten plastisch wirken lassen.'],
+      ring_shading: ['Wogende Ringschattierung', 'Konzentrische Schattierungsringe, die über die Schichten nach innen und außen wogen.'],
+      ambient_count: ['Anzahl Umgebungsschichten', 'Höchstzahl kleiner Umgebungsschichten, die an zufälligen Stellen in ruhigen Teilen des Rings auf- und absteigen. 0 schaltet sie ab.'],
+      ambient_size: ['Größe Umgebungsschicht', 'Maximale Höhe einer Umgebungsschicht.'],
+      ambient_width: ['Breite Umgebungsschicht', 'Breite einer Umgebungsschicht.'],
+      ambient_lifetime: ['Lebensdauer Umgebungsschicht (s)', 'Sekunden, die eine Umgebungsschicht zum Auf- und Absteigen braucht.'],
+      divergence_threshold: ['Divergenzschwelle (0–1)', 'Anteil (0-1) des Wegs vom Grundwert zum kritischen Wert, ab dem eine Beschriftung zu DIVERGENZ wechselt.'],
+      monitoring_threshold: ['Überwachungsschwelle (0–1, leer = keine)', 'Anteil (0-1) des Wegs vom Grundwert zum kritischen Wert, ab dem eine Beschriftung als ÜBERWACHUNG erscheint. Leer lassen für keinen Überwachungszustand.', 'Keine'],
+      transition_tau: ['Übergangsglättung (s)', 'Zeitkonstante in Sekunden für den weichen Übergang, wenn sich ein Wert ändert. Höhere Werte ergeben langsamere, ruhigere Bewegung.'],
+      language: ['Sprache', 'Sprache der Beschriftungstexte und der Wertformatierung. Auto folgt der Sprache von Home Assistant.'],
+      monitoring_label: ['Text für Überwachung', 'Text vor der Kategorie einer Beschriftung im Überwachungszustand. Leer nutzt die Übersetzung der Kartensprache.'],
+      divergence_label: ['Text für Divergenz', 'Text vor der Kategorie einer Beschriftung im Divergenzzustand. Leer nutzt die Übersetzung der Kartensprache.'],
+      font_family: ['Beschriftungsschrift (CSS font-family)', 'CSS-Schriftfamilie der Beschriftungen. Die Standardschrift Barlow Condensed lädt von Google Fonts. Setze eine lokale Schrift, damit die Karte offline bleibt.', 'Barlow Condensed (Standard)'],
+      font_size: ['Schriftgröße (px)', 'Größe des Beschriftungstexts in px. Führungslinien und Abstände skalieren mit.'],
+      hold_time: ['Haltedauer (ms)', 'Millisekunden, die ein Druck dauern muss, um als Halten zu gelten. Gilt für die Mitte und die Beschriftungen.'],
+      center_entity: ['Entität der Mitte', 'Entität, die die Aktionen der Mitte nutzen, zum Beispiel für Mehr-Info oder Umschalten.'],
+      center_tap_action: ['Tippaktion der Mitte', 'Aktion beim Tippen auf die Mitte des Rings. Für ein browser_mod-Popup nutze fire-dom-event mit einem browser_mod-Block in YAML.'],
+      center_hold_action: ['Halteaktion der Mitte', 'Aktion beim Drücken und Halten der Ringmitte.'],
+      height: ['Kartenhöhe (CSS)', 'Kartenhöhe in CSS-Einheiten, zum Beispiel 500px oder 100vh für eine Vollbild-Panelansicht.'],
+      ring_scale: ['Ringgröße', 'Ringradius relativ zur Kartengröße.'],
+      resolution_scale: ['Auflösungsfaktor', 'Renderauflösung relativ zum Bildschirm. Kleinere Werte sparen GPU-Zeit auf langsamen Tablets.'],
+      fps_idle: ['FPS im Ruhezustand', 'Bildrate, solange alle Entitäten ruhig sind.'],
+      fps_active: ['FPS bei Aktivität', 'Bildrate, solange eine Entität divergiert oder sich ein Wert ändert.']
+    },
+    entity: {
+      entity: ['Entitäts-ID', 'Home-Assistant-Entität, die diese Beschriftung steuert.'],
+      name: ['Name', 'Text der Beschriftung. Leer nutzt den Anzeigenamen der Entität.', 'Anzeigename der Entität'],
+      category: ['Kategorie', 'Kopfzeile über dem Namen, zum Beispiel THERMISCHE ABWEICHUNG.'],
+      baseline: ['Grundwert (Divergenz 0)', 'Wert, bei dem die Entität ruhig ist (Divergenz 0).'],
+      critical: ['Kritischer Wert (Divergenz 1)', 'Wert, bei dem die Entität voll divergiert (Divergenz 1). Liegt er unter dem Grundwert, divergieren niedrigere Werte.'],
+      state_map: ['Zustandszuordnung', 'Divergenz (0-1) für jeden aufgeführten Zustand, zum Beispiel home 0 und not_home 1. Ein aufgeführter Zustand ignoriert Grundwert und kritischen Wert. Mit einer Zuordnung sind die Entitätsschwellen Divergenzwerte (0-1).'],
+      unit: ['Einheit', 'Einheit hinter dem Wert. Leer nutzt die Einheit der Entität.', 'Einheit der Entität'],
+      angle: ['Winkel (°, leer = auto)', 'Position der Beschriftung auf dem Ring in Grad (0 = rechts, gegen den Uhrzeigersinn). Leer lassen, um die Beschriftungen gleichmäßig zu verteilen.', 'Auto'],
+      monitoring_threshold: ['Überwachungsschwelle (Sensorwert)', 'Sensorwert, ab dem diese Beschriftung als ÜBERWACHUNG erscheint; mit einer Zustandszuordnung ein Divergenzwert (0-1). Leer nutzt die Karteneinstellung.', 'Karteneinstellung', 'Überwachungsschwelle (0–1)'],
+      divergence_threshold: ['Divergenzschwelle (Sensorwert)', 'Sensorwert, ab dem diese Beschriftung zu DIVERGENZ wechselt; mit einer Zustandszuordnung ein Divergenzwert (0-1). Leer nutzt die Karteneinstellung.', 'Karteneinstellung', 'Divergenzschwelle (0–1)'],
+      always_visible: ['Beschriftung immer sichtbar', 'Zeigt die Beschriftung als ÜBERWACHUNG, auch wenn sie sonst verborgen wäre.'],
+      tap_action: ['Tippaktion', 'Aktion beim Tippen auf diese Beschriftung. Standard öffnet Mehr-Info.'],
+      hold_action: ['Halteaktion', 'Aktion beim Drücken und Halten dieser Beschriftung.']
+    }
+  },
+  fr: {
+    card: { monitoring: 'SURVEILLANCE', divergence: 'DIVERGENCE', category: 'ANOMALIE SYSTÈME', unavailable: 'INDISPONIBLE' },
+    ui: {
+      entities: 'Entités', expandAll: 'Tout déplier', collapseAll: 'Tout replier', addEntity: '+ Ajouter une entité',
+      remove: 'Supprimer', addState: '+ Ajouter un état', unconfigured: 'Non configurée', yamlOnly: "Définissez {key} dans l'éditeur YAML.",
+      entitiesHint: 'Si la valeur critique est au-dessus de la valeur de base, les valeurs hautes divergent. Si elle est en dessous (par exemple batterie : base 100, critique 20), les valeurs basses divergent. Sous le seuil de surveillance, une étiquette est masquée ({monitoring} si toujours visible) ; à partir du seuil de surveillance elle affiche {monitoring}, à partir du seuil de divergence {divergence}.',
+      state: 'État', divergenceOf: 'Divergence de {state}', removeState: 'Supprimer {state}'
+    },
+    sections: {
+      theme: 'Thème et éclipse', waves: 'Vagues et strates', ambient: 'Strates ambiantes', callouts: 'Étiquettes',
+      centre: "Centre de l'anneau", layout: 'Mise en page et performances',
+      centre_hint: "Appuyez ou maintenez le centre de l'anneau. Pour une fenêtre browser_mod, utilisez l'action « fire-dom-event » avec un bloc browser_mod en YAML."
+    },
+    options: { theme_mode: { dark: 'Sombre', light: 'Clair', auto: 'Auto' }, language: { '': 'Auto (Home Assistant)' } },
+    settings: {
+      theme_mode: ['Thème', "Sombre affiche une éclipse de nuit, clair de l'encre sur papier. Auto suit le mode sombre de Home Assistant."],
+      eclipse_angle: ["Angle de l'éclipse (°, vide = suivre)", "Direction de la lueur de l'éclipse en degrés (0 = droite, sens antihoraire). Laissez vide pour tourner la lueur vers l'entité la plus divergente.", 'Suivre'],
+      eclipse_intensity: ["Intensité de l'éclipse", "Luminosité du croissant de l'éclipse et de sa couronne."],
+      ray_intensity: ['Rayons de la couronne', "Force des fins rayons qui scintillent vers l'extérieur de l'anneau."],
+      test_divergence: ['Divergence de test (vide = direct)', "Aperçu uniquement : force la lueur de l'éclipse à cette divergence. Laissez vide pour utiliser les valeurs en direct.", 'Direct'],
+      amplitude_scale: ['Amplitude des vagues', 'Multiplicateur de hauteur pour toutes les vagues et strates.'],
+      peak_width: ['Largeur du pic', "Largeur du pic qui s'élève au-dessus d'une entité divergente."],
+      peak_sharpness: ['Netteté du pic (0 = dôme, 1 = pointe)', 'Forme du pic : 0 est un dôme aplati, 1 une pointe aiguë.'],
+      peak_height: ['Proéminence du pic', 'À quel point le pic dépasse les strates en dessous.'],
+      strata_width: ['Largeur des strates', 'Largeur des strates sous chaque pic.'],
+      baseline_height: ['Hauteur des vagues de base (0 = anneau lisse)', "Hauteur de la fine bande de vagues autour de tout l'anneau. 0 donne un anneau lisse."],
+      facet_shading: ['Ombrage des plis', 'Force des ombres de plis qui donnent du relief aux strates.'],
+      ring_shading: ["Ombrage d'anneaux ondulants", "Anneaux d'ombrage concentriques qui ondulent vers l'intérieur et l'extérieur sur les strates."],
+      ambient_count: ['Nombre de strates ambiantes', "Nombre maximal de petites strates ambiantes qui montent et descendent à des endroits aléatoires des zones calmes de l'anneau. 0 les désactive."],
+      ambient_size: ["Taille d'une strate ambiante", "Hauteur maximale d'une strate ambiante."],
+      ambient_width: ["Largeur d'une strate ambiante", "Largeur d'une strate ambiante."],
+      ambient_lifetime: ["Durée d'une strate ambiante (s)", 'Secondes nécessaires à une strate ambiante pour monter et redescendre.'],
+      divergence_threshold: ['Seuil de divergence (0–1)', 'Fraction (0-1) du chemin entre la valeur de base et la valeur critique à partir de laquelle une étiquette passe à DIVERGENCE.'],
+      monitoring_threshold: ['Seuil de surveillance (0–1, vide = aucun)', "Fraction (0-1) du chemin entre la valeur de base et la valeur critique à partir de laquelle une étiquette apparaît en SURVEILLANCE. Laissez vide pour aucun état de surveillance.", 'Aucun'],
+      transition_tau: ['Lissage des transitions (s)', "Constante de temps en secondes du changement progressif d'une valeur. Des valeurs plus élevées donnent un mouvement plus lent et plus calme."],
+      language: ['Langue', 'Langue des textes des étiquettes et du format des valeurs. Auto suit la langue de Home Assistant.'],
+      monitoring_label: ['Texte de surveillance', "Texte avant la catégorie d'une étiquette en surveillance. Vide utilise la traduction de la langue de la carte."],
+      divergence_label: ['Texte de divergence', "Texte avant la catégorie d'une étiquette en divergence. Vide utilise la traduction de la langue de la carte."],
+      font_family: ['Police des étiquettes (CSS font-family)', 'Famille de polices CSS des étiquettes. La police par défaut Barlow Condensed se charge depuis Google Fonts. Choisissez une police locale pour garder la carte hors ligne.', 'Barlow Condensed (par défaut)'],
+      font_size: ['Taille de police (px)', 'Taille du texte des étiquettes en px. Les lignes de rappel et les espacements suivent.'],
+      hold_time: ["Durée d'appui (ms)", "Millisecondes qu'un appui doit durer pour compter comme maintien. S'applique au centre et aux étiquettes."],
+      center_entity: ['Entité du centre', "Entité utilisée par les actions du centre, par exemple pour plus d'infos ou basculer."],
+      center_tap_action: ["Action d'appui du centre", "Action lors d'un appui sur le centre de l'anneau. Pour une fenêtre browser_mod, utilisez fire-dom-event avec un bloc browser_mod en YAML."],
+      center_hold_action: ['Action de maintien du centre', "Action lors d'un appui long sur le centre de l'anneau."],
+      height: ['Hauteur de la carte (CSS)', 'Hauteur de la carte en unités CSS, par exemple 500px, ou 100vh pour une vue panneau plein écran.'],
+      ring_scale: ["Taille de l'anneau", "Rayon de l'anneau par rapport à la taille de la carte."],
+      resolution_scale: ['Échelle de résolution', "Résolution de rendu par rapport à l'écran. Des valeurs plus faibles économisent du temps GPU sur les tablettes lentes."],
+      fps_idle: ['FPS au repos', "Fréquence d'images quand toutes les entités sont calmes."],
+      fps_active: ['FPS en activité', "Fréquence d'images quand une entité diverge ou qu'une valeur change."]
+    },
+    entity: {
+      entity: ["ID d'entité", 'Entité Home Assistant qui pilote cette étiquette.'],
+      name: ['Nom', "Texte de l'étiquette. Vide utilise le nom convivial de l'entité.", "Nom convivial de l'entité"],
+      category: ['Catégorie', 'En-tête au-dessus du nom, par exemple VARIATION THERMIQUE.'],
+      baseline: ['Valeur de base (divergence 0)', "Valeur à laquelle l'entité est calme (divergence 0)."],
+      critical: ['Valeur critique (divergence 1)', "Valeur à laquelle l'entité diverge complètement (divergence 1). Si elle est inférieure à la valeur de base, les valeurs plus basses divergent."],
+      state_map: ["Correspondance d'états", "Divergence (0-1) de chaque état listé, par exemple home 0 et not_home 1. Un état listé ignore la valeur de base et la valeur critique. Avec une correspondance, les seuils de l'entité sont des valeurs de divergence (0-1)."],
+      unit: ['Unité', "Unité affichée après la valeur. Vide utilise l'unité de l'entité.", "Unité de l'entité"],
+      angle: ['Angle (°, vide = auto)', "Position de l'étiquette sur l'anneau en degrés (0 = droite, sens antihoraire). Laissez vide pour répartir les étiquettes régulièrement.", 'Auto'],
+      monitoring_threshold: ['Seuil de surveillance (valeur du capteur)', "Valeur du capteur à partir de laquelle cette étiquette apparaît en SURVEILLANCE ; avec une correspondance d'états, une valeur de divergence (0-1). Vide utilise le réglage de la carte.", 'Réglage de la carte', 'Seuil de surveillance (0–1)'],
+      divergence_threshold: ['Seuil de divergence (valeur du capteur)', "Valeur du capteur à partir de laquelle cette étiquette passe à DIVERGENCE ; avec une correspondance d'états, une valeur de divergence (0-1). Vide utilise le réglage de la carte.", 'Réglage de la carte', 'Seuil de divergence (0–1)'],
+      always_visible: ['Étiquette toujours visible', "Affiche l'étiquette en SURVEILLANCE même quand elle serait masquée."],
+      tap_action: ["Action d'appui", "Action lors d'un appui sur cette étiquette. Par défaut, ouvre plus d'infos."],
+      hold_action: ['Action de maintien', "Action lors d'un appui long sur cette étiquette."]
+    }
+  },
+  es: {
+    card: { monitoring: 'MONITORIZACIÓN', divergence: 'DIVERGENCIA', category: 'ANOMALÍA DEL SISTEMA', unavailable: 'NO DISPONIBLE' },
+    ui: {
+      entities: 'Entidades', expandAll: 'Desplegar todo', collapseAll: 'Plegar todo', addEntity: '+ Añadir entidad',
+      remove: 'Eliminar', addState: '+ Añadir estado', unconfigured: 'Sin configurar', yamlOnly: 'Define {key} en el editor YAML.',
+      entitiesHint: 'Si el valor crítico está por encima del valor base, divergen los valores altos. Si está por debajo (por ejemplo batería: base 100, crítico 20), divergen los valores bajos. Por debajo del umbral de monitorización la etiqueta está oculta ({monitoring} si es siempre visible); desde el umbral de monitorización muestra {monitoring} y desde el umbral de divergencia {divergence}.',
+      state: 'Estado', divergenceOf: 'Divergencia de {state}', removeState: 'Eliminar {state}'
+    },
+    sections: {
+      theme: 'Tema y eclipse', waves: 'Ondas y estratos', ambient: 'Estratos ambientales', callouts: 'Etiquetas',
+      centre: 'Centro del anillo', layout: 'Diseño y rendimiento',
+      centre_hint: 'Toca o mantén pulsado el centro del anillo. Para una ventana de browser_mod usa la acción "fire-dom-event" con un bloque browser_mod en YAML.'
+    },
+    options: { theme_mode: { dark: 'Oscuro', light: 'Claro', auto: 'Auto' }, language: { '': 'Auto (Home Assistant)' } },
+    settings: {
+      theme_mode: ['Tema', 'Oscuro muestra un eclipse nocturno, claro muestra tinta sobre papel. Auto sigue el modo oscuro de Home Assistant.'],
+      eclipse_angle: ['Ángulo del eclipse (°, vacío = seguir)', 'Dirección del brillo del eclipse en grados (0 = derecha, sentido antihorario). Déjalo vacío para girar el brillo hacia la entidad con más divergencia.', 'Seguir'],
+      eclipse_intensity: ['Intensidad del eclipse', 'Brillo de la media luna del eclipse y de su corona.'],
+      ray_intensity: ['Rayos de la corona', 'Intensidad de los finos rayos que brillan hacia fuera del anillo.'],
+      test_divergence: ['Divergencia de prueba (vacío = en vivo)', 'Solo vista previa: fija el brillo del eclipse en esta divergencia. Déjalo vacío para usar los valores en vivo.', 'En vivo'],
+      amplitude_scale: ['Amplitud de las ondas', 'Multiplicador de altura para todas las ondas y estratos.'],
+      peak_width: ['Anchura del pico', 'Anchura del pico que se eleva sobre una entidad divergente.'],
+      peak_sharpness: ['Agudeza del pico (0 = cúpula, 1 = punta)', 'Forma del pico: 0 es una cúpula achatada, 1 una punta afilada.'],
+      peak_height: ['Prominencia del pico', 'Cuánto sobresale el pico de los estratos que tiene debajo.'],
+      strata_width: ['Anchura de los estratos', 'Anchura de los estratos bajo cada pico.'],
+      baseline_height: ['Altura de las ondas base (0 = anillo liso)', 'Altura de la fina banda de ondas alrededor de todo el anillo. 0 da un anillo liso.'],
+      facet_shading: ['Sombreado de pliegues', 'Intensidad de las sombras de pliegues que dan relieve a los estratos.'],
+      ring_shading: ['Sombreado de anillos ondulantes', 'Anillos de sombreado concéntricos que ondulan hacia dentro y hacia fuera sobre los estratos.'],
+      ambient_count: ['Número de estratos ambientales', 'Número máximo de pequeños estratos ambientales que suben y bajan en lugares aleatorios de las zonas tranquilas del anillo. 0 los desactiva.'],
+      ambient_size: ['Tamaño de un estrato ambiental', 'Altura máxima de un estrato ambiental.'],
+      ambient_width: ['Anchura de un estrato ambiental', 'Anchura de un estrato ambiental.'],
+      ambient_lifetime: ['Duración de un estrato ambiental (s)', 'Segundos que tarda un estrato ambiental en subir y volver a bajar.'],
+      divergence_threshold: ['Umbral de divergencia (0–1)', 'Fracción (0-1) del camino entre el valor base y el crítico a partir de la cual una etiqueta pasa a DIVERGENCIA.'],
+      monitoring_threshold: ['Umbral de monitorización (0–1, vacío = ninguno)', 'Fracción (0-1) del camino entre el valor base y el crítico a partir de la cual una etiqueta aparece como MONITORIZACIÓN. Déjalo vacío para no tener estado de monitorización.', 'Ninguno'],
+      transition_tau: ['Suavizado de transiciones (s)', 'Constante de tiempo en segundos del cambio suave cuando cambia un valor. Valores más altos dan un movimiento más lento y tranquilo.'],
+      language: ['Idioma', 'Idioma de los textos de las etiquetas y del formato de los valores. Auto sigue el idioma de Home Assistant.'],
+      monitoring_label: ['Texto de monitorización', 'Texto antes de la categoría en una etiqueta en monitorización. Vacío usa la traducción del idioma de la tarjeta.'],
+      divergence_label: ['Texto de divergencia', 'Texto antes de la categoría en una etiqueta en divergencia. Vacío usa la traducción del idioma de la tarjeta.'],
+      font_family: ['Fuente de las etiquetas (CSS font-family)', 'Familia de fuentes CSS de las etiquetas. La fuente predeterminada Barlow Condensed se carga desde Google Fonts. Usa una fuente local para que la tarjeta funcione sin conexión.', 'Barlow Condensed (predeterminada)'],
+      font_size: ['Tamaño de fuente (px)', 'Tamaño del texto de las etiquetas en px. Las líneas guía y los espacios se ajustan con él.'],
+      hold_time: ['Duración de pulsación (ms)', 'Milisegundos que debe durar una pulsación para contar como mantener. Se aplica al centro y a las etiquetas.'],
+      center_entity: ['Entidad del centro', 'Entidad que usan las acciones del centro, por ejemplo para más información o alternar.'],
+      center_tap_action: ['Acción al tocar el centro', 'Acción al tocar el centro del anillo. Para una ventana de browser_mod usa fire-dom-event con un bloque browser_mod en YAML.'],
+      center_hold_action: ['Acción al mantener el centro', 'Acción al mantener pulsado el centro del anillo.'],
+      height: ['Altura de la tarjeta (CSS)', 'Altura de la tarjeta en unidades CSS, por ejemplo 500px, o 100vh para una vista de panel a pantalla completa.'],
+      ring_scale: ['Tamaño del anillo', 'Radio del anillo en relación con el tamaño de la tarjeta.'],
+      resolution_scale: ['Escala de resolución', 'Resolución de renderizado en relación con la pantalla. Valores más bajos ahorran tiempo de GPU en tabletas lentas.'],
+      fps_idle: ['FPS en reposo', 'Fotogramas por segundo mientras todas las entidades están tranquilas.'],
+      fps_active: ['FPS en actividad', 'Fotogramas por segundo mientras una entidad diverge o cambia un valor.']
+    },
+    entity: {
+      entity: ['ID de entidad', 'Entidad de Home Assistant que controla esta etiqueta.'],
+      name: ['Nombre', 'Texto de la etiqueta. Vacío usa el nombre descriptivo de la entidad.', 'Nombre descriptivo de la entidad'],
+      category: ['Categoría', 'Encabezado sobre el nombre, por ejemplo VARIACIÓN TÉRMICA.'],
+      baseline: ['Valor base (divergencia 0)', 'Valor en el que la entidad está tranquila (divergencia 0).'],
+      critical: ['Valor crítico (divergencia 1)', 'Valor en el que la entidad diverge por completo (divergencia 1). Si está por debajo del valor base, divergen los valores más bajos.'],
+      state_map: ['Asignación de estados', 'Divergencia (0-1) de cada estado de la lista, por ejemplo home 0 y not_home 1. Un estado de la lista ignora el valor base y el crítico. Con una asignación, los umbrales de la entidad son valores de divergencia (0-1).'],
+      unit: ['Unidad', 'Unidad que se muestra tras el valor. Vacío usa la unidad de la entidad.', 'Unidad de la entidad'],
+      angle: ['Ángulo (°, vacío = auto)', 'Posición de la etiqueta en el anillo en grados (0 = derecha, sentido antihorario). Déjalo vacío para repartir las etiquetas de forma uniforme.', 'Auto'],
+      monitoring_threshold: ['Umbral de monitorización (valor del sensor)', 'Valor del sensor a partir del cual esta etiqueta aparece como MONITORIZACIÓN; con una asignación de estados, un valor de divergencia (0-1). Vacío usa el ajuste de la tarjeta.', 'Ajuste de la tarjeta', 'Umbral de monitorización (0–1)'],
+      divergence_threshold: ['Umbral de divergencia (valor del sensor)', 'Valor del sensor a partir del cual esta etiqueta pasa a DIVERGENCIA; con una asignación de estados, un valor de divergencia (0-1). Vacío usa el ajuste de la tarjeta.', 'Ajuste de la tarjeta', 'Umbral de divergencia (0–1)'],
+      always_visible: ['Etiqueta siempre visible', 'Muestra la etiqueta como MONITORIZACIÓN también cuando estaría oculta.'],
+      tap_action: ['Acción al tocar', 'Acción al tocar esta etiqueta. Por defecto abre más información.'],
+      hold_action: ['Acción al mantener', 'Acción al mantener pulsada esta etiqueta.']
+    }
+  },
+  nl: {
+    card: { monitoring: 'BEWAKING', divergence: 'DIVERGENTIE', category: 'SYSTEEMAFWIJKING', unavailable: 'NIET BESCHIKBAAR' },
+    ui: {
+      entities: 'Entiteiten', expandAll: 'Alles uitklappen', collapseAll: 'Alles inklappen', addEntity: '+ Entiteit toevoegen',
+      remove: 'Verwijderen', addState: '+ Status toevoegen', unconfigured: 'Niet ingesteld', yamlOnly: 'Stel {key} in via de YAML-editor.',
+      entitiesHint: 'Ligt de kritieke waarde boven de basiswaarde, dan divergeren hoge waarden. Ligt die eronder (bijvoorbeeld batterij: basis 100, kritiek 20), dan divergeren lage waarden. Onder de bewakingsdrempel is een label verborgen ({monitoring} als altijd zichtbaar), vanaf de bewakingsdrempel toont het {monitoring} en vanaf de divergentiedrempel {divergence}.',
+      state: 'Status', divergenceOf: 'Divergentie van {state}', removeState: '{state} verwijderen'
+    },
+    sections: {
+      theme: 'Thema en eclips', waves: 'Golven en lagen', ambient: 'Omgevingslagen', callouts: 'Labels',
+      centre: 'Midden van de ring', layout: 'Opmaak en prestaties',
+      centre_hint: 'Tik op het midden van de ring of houd het ingedrukt. Gebruik voor een browser_mod-pop-up de actie "fire-dom-event" met een browser_mod-blok in YAML.'
+    },
+    options: { theme_mode: { dark: 'Donker', light: 'Licht', auto: 'Auto' }, language: { '': 'Auto (Home Assistant)' } },
+    settings: {
+      theme_mode: ['Thema', 'Donker toont een nachtelijke eclips, licht toont inkt op papier. Auto volgt de donkere modus van Home Assistant.'],
+      eclipse_angle: ['Eclipshoek (°, leeg = volgen)', 'Richting van de eclipsgloed in graden (0 = rechts, tegen de klok in). Laat leeg om de gloed naar de entiteit met de meeste divergentie te draaien.', 'Volgen'],
+      eclipse_intensity: ['Eclipsintensiteit', 'Helderheid van de eclipssikkel en zijn corona.'],
+      ray_intensity: ['Coronastralen', 'Sterkte van de dunne stralen die vanaf de ring naar buiten glinsteren.'],
+      test_divergence: ['Testdivergentie (leeg = live)', 'Alleen voorbeeld: zet de eclipsgloed op deze divergentie. Laat leeg om de live waarden te gebruiken.', 'Live'],
+      amplitude_scale: ['Golfamplitude', 'Hoogtefactor voor alle golven en lagen.'],
+      peak_width: ['Piekbreedte', 'Breedte van de piek die boven een divergerende entiteit uitsteekt.'],
+      peak_sharpness: ['Piekscherpte (0 = koepel, 1 = punt)', 'Vorm van de piek: 0 is een afgeplatte koepel, 1 een scherpe punt.'],
+      peak_height: ['Piekhoogte', 'Hoe ver de piek boven de lagen eronder uitsteekt.'],
+      strata_width: ['Laagbreedte', 'Breedte van de lagen onder elke piek.'],
+      baseline_height: ['Basisgolfhoogte (0 = gladde ring)', 'Hoogte van de smalle golfband rond de hele ring. 0 geeft een gladde ring.'],
+      facet_shading: ['Plooischaduw', 'Sterkte van de plooischaduwen die de lagen diepte geven.'],
+      ring_shading: ['Golvende ringschaduw', 'Concentrische schaduwringen die over de lagen naar binnen en buiten golven.'],
+      ambient_count: ['Aantal omgevingslagen', 'Maximaal aantal kleine omgevingslagen die op willekeurige plekken in rustige delen van de ring opkomen en wegzakken. 0 schakelt ze uit.'],
+      ambient_size: ['Grootte omgevingslaag', 'Maximale hoogte van één omgevingslaag.'],
+      ambient_width: ['Breedte omgevingslaag', 'Breedte van één omgevingslaag.'],
+      ambient_lifetime: ['Levensduur omgevingslaag (s)', 'Seconden die één omgevingslaag nodig heeft om op te komen en weer weg te zakken.'],
+      divergence_threshold: ['Divergentiedrempel (0–1)', 'Fractie (0-1) van de weg van basiswaarde naar kritieke waarde waarbij een label naar DIVERGENTIE gaat.'],
+      monitoring_threshold: ['Bewakingsdrempel (0–1, leeg = geen)', 'Fractie (0-1) van de weg van basiswaarde naar kritieke waarde waarbij een label als BEWAKING verschijnt. Laat leeg voor geen bewakingsstatus.', 'Geen'],
+      transition_tau: ['Overgangsdemping (s)', 'Tijdconstante in seconden van de vloeiende overgang als een waarde verandert. Hogere waarden geven een tragere, rustigere beweging.'],
+      language: ['Taal', 'Taal van de labelteksten en de opmaak van waarden. Auto volgt de taal van Home Assistant.'],
+      monitoring_label: ['Tekst voor bewaking', 'Tekst voor de categorie op een label in bewaking. Leeg gebruikt de vertaling voor de taal van de kaart.'],
+      divergence_label: ['Tekst voor divergentie', 'Tekst voor de categorie op een label in divergentie. Leeg gebruikt de vertaling voor de taal van de kaart.'],
+      font_family: ['Lettertype labels (CSS font-family)', 'CSS-lettertypefamilie van de labels. Het standaardlettertype Barlow Condensed laadt van Google Fonts. Kies een lokaal lettertype om de kaart offline te houden.', 'Barlow Condensed (standaard)'],
+      font_size: ['Lettergrootte (px)', 'Grootte van de labeltekst in px. Verbindingslijnen en afstanden schalen mee.'],
+      hold_time: ['Vasthoudduur (ms)', 'Milliseconden die een druk moet duren om als vasthouden te tellen. Geldt voor het midden en de labels.'],
+      center_entity: ['Entiteit van het midden', 'Entiteit die de acties van het midden gebruiken, bijvoorbeeld voor meer info of schakelen.'],
+      center_tap_action: ['Tikactie midden', 'Actie bij tikken op het midden van de ring. Gebruik voor een browser_mod-pop-up fire-dom-event met een browser_mod-blok in YAML.'],
+      center_hold_action: ['Vasthoudactie midden', 'Actie bij ingedrukt houden van het midden van de ring.'],
+      height: ['Kaarthoogte (CSS)', 'Kaarthoogte in CSS-eenheden, bijvoorbeeld 500px, of 100vh voor een paneelweergave op volledig scherm.'],
+      ring_scale: ['Ringgrootte', 'Ringstraal ten opzichte van de kaartgrootte.'],
+      resolution_scale: ['Resolutieschaal', 'Renderresolutie ten opzichte van het scherm. Lagere waarden besparen GPU-tijd op trage tablets.'],
+      fps_idle: ['FPS in rust', 'Beeldsnelheid zolang alle entiteiten rustig zijn.'],
+      fps_active: ['FPS bij activiteit', 'Beeldsnelheid zolang een entiteit divergeert of een waarde verandert.']
+    },
+    entity: {
+      entity: ['Entiteit-ID', 'Home Assistant-entiteit die dit label aanstuurt.'],
+      name: ['Naam', 'Tekst van het label. Leeg gebruikt de weergavenaam van de entiteit.', 'Weergavenaam van de entiteit'],
+      category: ['Categorie', 'Kop boven de naam, bijvoorbeeld THERMISCHE AFWIJKING.'],
+      baseline: ['Basiswaarde (divergentie 0)', 'Waarde waarbij de entiteit rustig is (divergentie 0).'],
+      critical: ['Kritieke waarde (divergentie 1)', 'Waarde waarbij de entiteit volledig divergeert (divergentie 1). Ligt die onder de basiswaarde, dan divergeren lagere waarden.'],
+      state_map: ['Statustoewijzing', 'Divergentie (0-1) voor elke vermelde status, bijvoorbeeld home 0 en not_home 1. Een vermelde status negeert basiswaarde en kritieke waarde. Met een toewijzing zijn de drempels van de entiteit divergentiewaarden (0-1).'],
+      unit: ['Eenheid', 'Eenheid achter de waarde. Leeg gebruikt de eenheid van de entiteit.', 'Eenheid van de entiteit'],
+      angle: ['Hoek (°, leeg = auto)', 'Positie van het label op de ring in graden (0 = rechts, tegen de klok in). Laat leeg om de labels gelijkmatig te verdelen.', 'Auto'],
+      monitoring_threshold: ['Bewakingsdrempel (sensorwaarde)', 'Sensorwaarde waarbij dit label als BEWAKING verschijnt; met een statustoewijzing een divergentiewaarde (0-1). Leeg gebruikt de kaartinstelling.', 'Kaartinstelling', 'Bewakingsdrempel (0–1)'],
+      divergence_threshold: ['Divergentiedrempel (sensorwaarde)', 'Sensorwaarde waarbij dit label naar DIVERGENTIE gaat; met een statustoewijzing een divergentiewaarde (0-1). Leeg gebruikt de kaartinstelling.', 'Kaartinstelling', 'Divergentiedrempel (0–1)'],
+      always_visible: ['Label altijd zichtbaar', 'Toont het label als BEWAKING, ook als het anders verborgen zou zijn.'],
+      tap_action: ['Tikactie', 'Actie bij tikken op dit label. Standaard opent meer info.'],
+      hold_action: ['Vasthoudactie', 'Actie bij ingedrukt houden van dit label.']
+    }
+  },
+  it: {
+    card: { monitoring: 'MONITORAGGIO', divergence: 'DIVERGENZA', category: 'ANOMALIA DI SISTEMA', unavailable: 'NON DISPONIBILE' },
+    ui: {
+      entities: 'Entità', expandAll: 'Espandi tutto', collapseAll: 'Comprimi tutto', addEntity: '+ Aggiungi entità',
+      remove: 'Rimuovi', addState: '+ Aggiungi stato', unconfigured: 'Non configurata', yamlOnly: "Imposta {key} nell'editor YAML.",
+      entitiesHint: "Se il valore critico è sopra il valore base, divergono i valori alti. Se è sotto (per esempio batteria: base 100, critico 20), divergono i valori bassi. Sotto la soglia di monitoraggio un'etichetta è nascosta ({monitoring} se sempre visibile); dalla soglia di monitoraggio mostra {monitoring} e dalla soglia di divergenza {divergence}.",
+      state: 'Stato', divergenceOf: 'Divergenza di {state}', removeState: 'Rimuovi {state}'
+    },
+    sections: {
+      theme: 'Tema ed eclissi', waves: 'Onde e strati', ambient: 'Strati ambientali', callouts: 'Etichette',
+      centre: "Centro dell'anello", layout: 'Layout e prestazioni',
+      centre_hint: "Tocca o tieni premuto il centro dell'anello. Per un popup browser_mod usa l'azione \"fire-dom-event\" con un blocco browser_mod in YAML."
+    },
+    options: { theme_mode: { dark: 'Scuro', light: 'Chiaro', auto: 'Auto' }, language: { '': 'Auto (Home Assistant)' } },
+    settings: {
+      theme_mode: ['Tema', "Scuro mostra un'eclissi notturna, chiaro mostra inchiostro su carta. Auto segue la modalità scura di Home Assistant."],
+      eclipse_angle: ["Angolo dell'eclissi (°, vuoto = segui)", "Direzione del bagliore dell'eclissi in gradi (0 = destra, senso antiorario). Lascia vuoto per girare il bagliore verso l'entità con la divergenza maggiore.", 'Segui'],
+      eclipse_intensity: ["Intensità dell'eclissi", "Luminosità della falce dell'eclissi e della sua corona."],
+      ray_intensity: ['Raggi della corona', "Intensità dei sottili raggi che brillano verso l'esterno dell'anello."],
+      test_divergence: ['Divergenza di prova (vuoto = dal vivo)', "Solo anteprima: forza il bagliore dell'eclissi a questa divergenza. Lascia vuoto per usare i valori dal vivo.", 'Dal vivo'],
+      amplitude_scale: ['Ampiezza delle onde', 'Moltiplicatore di altezza per tutte le onde e gli strati.'],
+      peak_width: ['Larghezza del picco', "Larghezza del picco che si alza sopra un'entità divergente."],
+      peak_sharpness: ['Nitidezza del picco (0 = cupola, 1 = punta)', 'Forma del picco: 0 è una cupola appiattita, 1 una punta acuta.'],
+      peak_height: ['Prominenza del picco', 'Quanto il picco sporge sopra gli strati sottostanti.'],
+      strata_width: ['Larghezza degli strati', 'Larghezza degli strati sotto ogni picco.'],
+      baseline_height: ['Altezza onde di base (0 = anello liscio)', "Altezza della sottile fascia di onde intorno a tutto l'anello. 0 dà un anello liscio."],
+      facet_shading: ['Ombreggiatura delle pieghe', 'Intensità delle ombre delle pieghe che danno rilievo agli strati.'],
+      ring_shading: ['Ombreggiatura ad anelli ondulanti', "Anelli di ombreggiatura concentrici che ondeggiano verso l'interno e l'esterno sugli strati."],
+      ambient_count: ['Numero di strati ambientali', "Numero massimo di piccoli strati ambientali che salgono e scendono in punti casuali delle zone calme dell'anello. 0 li disattiva."],
+      ambient_size: ['Dimensione strato ambientale', 'Altezza massima di uno strato ambientale.'],
+      ambient_width: ['Larghezza strato ambientale', 'Larghezza di uno strato ambientale.'],
+      ambient_lifetime: ['Durata strato ambientale (s)', 'Secondi che uno strato ambientale impiega per salire e scendere di nuovo.'],
+      divergence_threshold: ['Soglia di divergenza (0–1)', "Frazione (0-1) del percorso tra valore base e valore critico da cui un'etichetta passa a DIVERGENZA."],
+      monitoring_threshold: ['Soglia di monitoraggio (0–1, vuoto = nessuna)', "Frazione (0-1) del percorso tra valore base e valore critico da cui un'etichetta appare come MONITORAGGIO. Lascia vuoto per nessuno stato di monitoraggio.", 'Nessuna'],
+      transition_tau: ['Smorzamento transizioni (s)', 'Costante di tempo in secondi del cambio graduale quando un valore cambia. Valori più alti danno un movimento più lento e calmo.'],
+      language: ['Lingua', 'Lingua dei testi delle etichette e del formato dei valori. Auto segue la lingua di Home Assistant.'],
+      monitoring_label: ['Testo di monitoraggio', "Testo prima della categoria in un'etichetta in monitoraggio. Vuoto usa la traduzione della lingua della scheda."],
+      divergence_label: ['Testo di divergenza', "Testo prima della categoria in un'etichetta in divergenza. Vuoto usa la traduzione della lingua della scheda."],
+      font_family: ['Carattere delle etichette (CSS font-family)', 'Famiglia di caratteri CSS delle etichette. Il carattere predefinito Barlow Condensed si carica da Google Fonts. Imposta un carattere locale per tenere la scheda offline.', 'Barlow Condensed (predefinito)'],
+      font_size: ['Dimensione carattere (px)', 'Dimensione del testo delle etichette in px. Linee guida e spaziature si adattano.'],
+      hold_time: ['Durata pressione (ms)', 'Millisecondi che una pressione deve durare per contare come tenuta. Vale per il centro e per le etichette.'],
+      center_entity: ['Entità del centro', 'Entità usata dalle azioni del centro, per esempio per più informazioni o commutare.'],
+      center_tap_action: ['Azione al tocco del centro', "Azione al tocco del centro dell'anello. Per un popup browser_mod usa fire-dom-event con un blocco browser_mod in YAML."],
+      center_hold_action: ['Azione alla pressione prolungata del centro', "Azione quando tieni premuto il centro dell'anello."],
+      height: ['Altezza della scheda (CSS)', 'Altezza della scheda in unità CSS, per esempio 500px, o 100vh per una vista pannello a schermo intero.'],
+      ring_scale: ["Dimensione dell'anello", "Raggio dell'anello rispetto alla dimensione della scheda."],
+      resolution_scale: ['Scala di risoluzione', 'Risoluzione di rendering rispetto allo schermo. Valori più bassi risparmiano tempo GPU sui tablet lenti.'],
+      fps_idle: ['FPS a riposo', 'Frequenza dei fotogrammi mentre tutte le entità sono calme.'],
+      fps_active: ['FPS in attività', "Frequenza dei fotogrammi mentre un'entità diverge o un valore cambia."]
+    },
+    entity: {
+      entity: ['ID entità', 'Entità di Home Assistant che guida questa etichetta.'],
+      name: ['Nome', "Testo dell'etichetta. Vuoto usa il nome visualizzato dell'entità.", "Nome visualizzato dell'entità"],
+      category: ['Categoria', 'Intestazione sopra il nome, per esempio VARIAZIONE TERMICA.'],
+      baseline: ['Valore base (divergenza 0)', "Valore a cui l'entità è calma (divergenza 0)."],
+      critical: ['Valore critico (divergenza 1)', "Valore a cui l'entità diverge del tutto (divergenza 1). Se è sotto il valore base, divergono i valori più bassi."],
+      state_map: ['Mappa degli stati', "Divergenza (0-1) per ogni stato elencato, per esempio home 0 e not_home 1. Uno stato elencato ignora valore base e valore critico. Con una mappa, le soglie dell'entità sono valori di divergenza (0-1)."],
+      unit: ['Unità', "Unità mostrata dopo il valore. Vuoto usa l'unità dell'entità.", "Unità dell'entità"],
+      angle: ['Angolo (°, vuoto = auto)', "Posizione dell'etichetta sull'anello in gradi (0 = destra, senso antiorario). Lascia vuoto per distribuire le etichette in modo uniforme.", 'Auto'],
+      monitoring_threshold: ['Soglia di monitoraggio (valore del sensore)', "Valore del sensore da cui questa etichetta appare come MONITORAGGIO; con una mappa degli stati, un valore di divergenza (0-1). Vuoto usa l'impostazione della scheda.", 'Impostazione della scheda', 'Soglia di monitoraggio (0–1)'],
+      divergence_threshold: ['Soglia di divergenza (valore del sensore)', "Valore del sensore da cui questa etichetta passa a DIVERGENZA; con una mappa degli stati, un valore di divergenza (0-1). Vuoto usa l'impostazione della scheda.", 'Impostazione della scheda', 'Soglia di divergenza (0–1)'],
+      always_visible: ['Etichetta sempre visibile', "Mostra l'etichetta come MONITORAGGIO anche quando sarebbe nascosta."],
+      tap_action: ['Azione al tocco', 'Azione al tocco di questa etichetta. Il predefinito apre più informazioni.'],
+      hold_action: ['Azione alla pressione prolungata', 'Azione quando tieni premuta questa etichetta.']
+    }
+  }
+};
+
+function normLang(lang) {
+  const base = String(lang || '').toLowerCase().split(/[-_]/)[0];
+  return base in TRANSLATIONS ? base : 'en';
+}
+const fillText = (text, vars) => String(text).replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
+const I18N_CACHE = {};
+// The settings list, section titles and texts in one language, with English as the fallback
+function i18n(lang) {
+  const code = normLang(lang);
+  if (I18N_CACHE[code]) return I18N_CACHE[code];
+  const tr = TRANSLATIONS[code] || {};
+  const text = { ...CARD_TEXT, ...tr.card };
+  const ui = { ...UI_TEXT, ...tr.ui };
+  const localize = (list, dict) => list.map(st => {
+    const out = { ...st };
+    const t = dict && dict[st.key];
+    if (t) {
+      if (t[0]) out.label = t[0];
+      if (t[1]) out.tip = t[1];
+      if (t[2]) out.placeholder = t[2];
+      if (t[3]) out.mapLabel = t[3];
+    }
+    const names = tr.options && tr.options[st.key];
+    if (st.options && names) out.options = st.options.map(([v, n]) => [v, v in names ? names[v] : n]);
+    return out;
+  });
+  const settings = localize(CARD_SETTINGS, tr.settings).map(st => {
+    if (st.key === 'monitoring_label') return { ...st, placeholder: text.monitoring };
+    if (st.key === 'divergence_label') return { ...st, placeholder: text.divergence };
+    return st;
+  });
+  const entity = localize(ENTITY_SETTINGS, tr.entity).map(st => (st.key === 'category' ? { ...st, placeholder: text.category } : st));
+  const secs = tr.sections || {};
+  const sections = SETTING_SECTIONS.map(sec => ({
+    ...sec,
+    title: secs[sec.id] || sec.title,
+    hint: sec.hint && (secs[`${sec.id}_hint`] || sec.hint)
+  }));
+  I18N_CACHE[code] = { code, text, ui, sections, settings, entity };
+  return I18N_CACHE[code];
+}
+
 const hasStateMap = ent => Boolean(ent && ent.state_map && typeof ent.state_map === 'object' && Object.keys(ent.state_map).length);
 const SETTING = Object.fromEntries(CARD_SETTINGS.map(st => [st.key, st]));
 const settingUnsetAt = (st, config) => (typeof st.unsetAt === 'function' ? st.unsetAt(config) : st.unsetAt ?? st.default ?? st.min);
@@ -527,8 +931,14 @@ function tipIcon(text) {
 // VISUAL LOVELACE CONFIG EDITOR (<lovelace-rehoboam-editor>)
 // ============================================================================
 class RehoboamCardEditor extends HTMLElement {
+  // The settings list in English (for the README) or in one language (for the playground)
   static get settings() {
-    return { sections: SETTING_SECTIONS, card: CARD_SETTINGS, entity: ENTITY_SETTINGS };
+    return RehoboamCardEditor.settingsFor('en');
+  }
+
+  static settingsFor(lang) {
+    const L = i18n(lang);
+    return { language: L.code, sections: L.sections, card: L.settings, entity: L.entity, ui: L.ui, text: L.text, languages: LANGUAGES };
   }
 
   constructor() {
@@ -583,6 +993,13 @@ class RehoboamCardEditor extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    // The editor follows the language of the Home Assistant user
+    const lang = normLang((hass && hass.locale && hass.locale.language) || (hass && hass.language));
+    if (lang !== this._lang) {
+      this._lang = lang;
+      if (this._rendered) this._render();
+      return;
+    }
     if (this.shadowRoot) {
       this.shadowRoot.querySelectorAll('ha-entity-picker, ha-selector').forEach(el => {
         el.hass = hass;
@@ -822,14 +1239,15 @@ class RehoboamCardEditor extends HTMLElement {
         return this._actionField(esc(st.label), 'entity', st.key, idx, st.tip);
       case 'map': {
         const entries = Object.entries(value && typeof value === 'object' ? value : {});
+        const ui = this._L.ui;
         return `<div class="field map-field" data-idx="${idx}" style="grid-column: span 2;">${label}
           ${entries.map(([state, v]) => `<div class="map-row">
-            <input class="map-state" type="text" value="${esc(state)}" placeholder="state" aria-label="State" />
-            <input class="map-rng" type="range" min="0" max="1" step="0.05" value="${esc(v)}" aria-label="Divergence of ${esc(state)}" />
-            <input class="map-num" type="number" min="0" max="1" step="0.05" value="${esc(v)}" aria-label="Divergence of ${esc(state)}" />
-            <button class="btn btn-danger map-del" type="button" aria-label="Remove ${esc(state)}">×</button>
+            <input class="map-state" type="text" value="${esc(state)}" placeholder="${esc(ui.state)}" aria-label="${esc(ui.state)}" />
+            <input class="map-rng" type="range" min="0" max="1" step="0.05" value="${esc(v)}" aria-label="${esc(fillText(ui.divergenceOf, { state }))}" />
+            <input class="map-num" type="number" min="0" max="1" step="0.05" value="${esc(v)}" aria-label="${esc(fillText(ui.divergenceOf, { state }))}" />
+            <button class="btn btn-danger map-del" type="button" aria-label="${esc(fillText(ui.removeState, { state }))}">×</button>
           </div>`).join('')}
-          <div><button class="btn map-add" type="button">+ Add state</button></div>
+          <div><button class="btn map-add" type="button">${esc(ui.addState)}</button></div>
         </div>`;
       }
       default:
@@ -882,7 +1300,7 @@ class RehoboamCardEditor extends HTMLElement {
   _actionField(label, scope, key, idx = '', tip = '') {
     if (!customElements.get('ha-selector')) {
       return `<div class="field" style="grid-column: span 2;"><label>${label}${tipIcon(tip)}</label>
-        <div class="hint">Set <code>${key}</code> in the YAML editor.</div></div>`;
+        <div class="hint">${esc(fillText((this._L || i18n('en')).ui.yamlOnly, { key })).replace(esc(key), `<code>${esc(key)}</code>`)}</div></div>`;
     }
     return `<div class="field" style="grid-column: span 2;">
       <label>${label}${tipIcon(tip)}</label>
@@ -893,6 +1311,8 @@ class RehoboamCardEditor extends HTMLElement {
   _render() {
     if (!this._config) return;
     const c = this._config;
+    const L = i18n(this._lang);
+    this._L = L;
     const hasEntityPicker = Boolean(customElements.get('ha-entity-picker'));
 
     this.shadowRoot.innerHTML = `
@@ -1113,27 +1533,24 @@ class RehoboamCardEditor extends HTMLElement {
         }
       </style>
 
-      ${SETTING_SECTIONS.map(sec => `
+      ${L.sections.map(sec => `
       <div class="section">
         <div class="section-title">${sec.title}</div>
         ${sec.hint ? `<div class="hint">${esc(sec.hint)}</div>` : ''}
         <div class="grid">
-          ${CARD_SETTINGS.filter(st => st.section === sec.id).map(st => this._settingField(st, hasEntityPicker)).join('')}
+          ${L.settings.filter(st => st.section === sec.id).map(st => this._settingField(st, hasEntityPicker)).join('')}
         </div>
       </div>`).join('')}
 
       <div class="section">
         <div class="section-title">
-          <span>Entities (${c.entities.length})</span>
+          <span>${esc(L.ui.entities)} (${c.entities.length})</span>
           <span>
-            <button class="btn" id="btn-toggle-entities">${this._openEntities.size ? 'Collapse all' : 'Expand all'}</button>
-            <button class="btn" id="btn-add-entity">+ Add entity</button>
+            <button class="btn" id="btn-toggle-entities">${esc(this._openEntities.size ? L.ui.collapseAll : L.ui.expandAll)}</button>
+            <button class="btn" id="btn-add-entity">${esc(L.ui.addEntity)}</button>
           </span>
         </div>
-        <div class="hint">
-          Tip: If Critical &gt; Baseline, low values are normal and high values diverge. If Critical &lt; Baseline (e.g. Battery: Baseline 100, Critical 20), high values are normal and low values diverge.
-          Callouts: below the monitoring threshold hidden (or "MONITORING" if always visible), from the monitoring threshold "MONITORING", from the divergence threshold "DIVERGENCE". Thresholds count in the same direction as baseline → critical.
-        </div>
+        <div class="hint">${esc(fillText(L.ui.entitiesHint, { monitoring: L.text.monitoring, divergence: L.text.divergence }))}</div>
         <div id="entities-container">
           ${c.entities
             .map(
@@ -1142,12 +1559,12 @@ class RehoboamCardEditor extends HTMLElement {
                 return `
             <details class="entity-card" data-idx="${idx}" ${this._openEntities.has(idx) ? 'open' : ''}>
               <summary class="entity-head">
-                <span class="entity-title">#${idx + 1} ${esc(ent.category || 'SYSTEM ANOMALY')}
-                  <span class="entity-sub">· ${esc(ent.name || ent.entity || 'Unconfigured')}</span></span>
-                <button class="btn btn-danger btn-remove" data-idx="${idx}">Remove</button>
+                <span class="entity-title">#${idx + 1} ${esc(ent.category || L.text.category)}
+                  <span class="entity-sub">· ${esc(ent.name || ent.entity || L.ui.unconfigured)}</span></span>
+                <button class="btn btn-danger btn-remove" data-idx="${idx}">${esc(L.ui.remove)}</button>
               </summary>
               <div class="grid">
-                ${ENTITY_SETTINGS.map(st => this._entityField(st, ent, idx, tb, hasEntityPicker)).join('')}
+                ${L.entity.map(st => this._entityField(st, ent, idx, tb, hasEntityPicker)).join('')}
               </div>
             </details>
           `;
@@ -1185,7 +1602,7 @@ class RehoboamCardEditor extends HTMLElement {
         const idx = Number(box.dataset.idx);
         if (box.open) this._openEntities.add(idx); else this._openEntities.delete(idx);
         const toggleAll = root.getElementById('btn-toggle-entities');
-        if (toggleAll) toggleAll.textContent = this._openEntities.size ? 'Collapse all' : 'Expand all';
+        if (toggleAll) toggleAll.textContent = this._openEntities.size ? L.ui.collapseAll : L.ui.expandAll;
       });
     });
     root.getElementById('btn-toggle-entities').addEventListener('click', () => {
@@ -1339,6 +1756,9 @@ class RehoboamCard extends HTMLElement {
     this._config = {
       theme_mode: ['light', 'auto'].includes(themeMode) ? themeMode : 'dark',
       font_family: config.font_family ? String(config.font_family) : DEFAULT_FONT,
+      language: config.language ? String(config.language) : null,
+      monitoring_label: config.monitoring_label ? String(config.monitoring_label) : null,
+      divergence_label: config.divergence_label ? String(config.divergence_label) : null,
       font_size: opt('font_size'),
       height: config.height ? String(config.height) : DEFAULT_HEIGHT,
       eclipse_angle: eclipseAngleDeg,
@@ -1428,7 +1848,7 @@ class RehoboamCard extends HTMLElement {
       return {
         id,
         name: conf.name || null,
-        category: String(conf.category || 'SYSTEM ANOMALY').toUpperCase(),
+        category: conf.category ? String(conf.category) : null,
         angleDeg,
         angleRad,
         cosA: Math.cos(angleRad),
@@ -1466,6 +1886,13 @@ class RehoboamCard extends HTMLElement {
       this._syncUniforms();
     }
 
+    // Callout text and value format follow the card language, else the Home Assistant language
+    const L = i18n(this._config.language || (hass.locale && hass.locale.language) || hass.language);
+    this._i18n = L;
+    const upper = text => String(text).toLocaleUpperCase(L.code);
+    const monitoringText = this._config.monitoring_label || L.text.monitoring;
+    const divergenceText = this._config.divergence_label || L.text.divergence;
+
     let maxDiv = 0;
     let sumDiv = 0;
 
@@ -1477,7 +1904,6 @@ class RehoboamCard extends HTMLElement {
       const attrs = (stateObj && stateObj.attributes) || {};
       const friendly = ent.name || attrs.friendly_name || ent.id || 'SENSOR';
       const isUnavailable = rawState === 'unavailable' || rawState === 'unknown';
-      const unit = isUnavailable ? '' : (ent.unit !== null ? ent.unit : (attrs.unit_of_measurement || ''));
 
       let div = 0;
       const mapped = ent.stateMap ? Number(ent.stateMap[rawState]) : NaN;
@@ -1499,7 +1925,7 @@ class RehoboamCard extends HTMLElement {
       if (div > maxDiv) maxDiv = div;
       sumDiv += div;
 
-      const nextFormatted = `${rawState}${unit ? ' ' + unit : ''}`;
+      const nextFormatted = this._formatValue(hass, stateObj, ent, L);
       // Three callout states: hidden (or monitoring if always visible), monitoring, divergence
       const isDiverging = div >= ent.divergeAt;
       const isMonitoring = !isDiverging && div >= ent.monitorAt;
@@ -1513,7 +1939,7 @@ class RehoboamCard extends HTMLElement {
           this._labelsDirty = true;
         }
 
-        const headerText = isDiverging ? `DIVERGENCE: ${ent.category}` : `MONITORING: ${ent.category}`;
+        const headerText = upper(`${isDiverging ? divergenceText : monitoringText}: ${ent.category || L.text.category}`);
         if (ent.lastHeader !== headerText && ent.domHeader) {
           ent.lastHeader = headerText;
           ent.domHeader.textContent = headerText;
@@ -1521,7 +1947,8 @@ class RehoboamCard extends HTMLElement {
           this._labelsDirty = true;
         }
 
-        const subText = `${friendly.toUpperCase()} : ${nextFormatted.toUpperCase()}`;
+        // The value keeps its case: upper case would change units (mW to MW, µg to ΜG)
+        const subText = `${upper(friendly)} : ${nextFormatted}`;
         if (ent.formattedValue !== subText && ent.domSub) {
           ent.formattedValue = subText;
           ent.domSub.textContent = subText;
@@ -1537,6 +1964,40 @@ class RehoboamCard extends HTMLElement {
       const combined = Math.min(1.0, maxDiv * 0.78 + (sumDiv / Math.max(1, this._entities.length)) * 0.65);
       this._targetEclipse = combined * this._config.eclipse_intensity;
     }
+  }
+
+  // Callout value: Home Assistant's own format (localized numbers and states) where it exists.
+  // A unit override keeps the localized number and replaces the unit.
+  _formatValue(hass, stateObj, ent, L) {
+    if (!stateObj) return L.text.unavailable;
+    const raw = String(stateObj.state);
+    const haFormat = typeof hass.formatEntityState === 'function';
+    if (raw === 'unavailable' || raw === 'unknown') return haFormat ? hass.formatEntityState(stateObj) : raw;
+    const num = raw.trim() === '' ? NaN : Number(raw);
+    if (ent.unit === null) {
+      if (haFormat) return hass.formatEntityState(stateObj);
+      const unit = stateObj.attributes && stateObj.attributes.unit_of_measurement;
+      return `${Number.isFinite(num) ? this._formatNumber(num, raw, L.code) : raw}${unit ? ' ' + unit : ''}`;
+    }
+    const value = Number.isFinite(num) ? this._formatNumber(num, raw, L.code) : haFormat ? hass.formatEntityState(stateObj) : raw;
+    return `${value} ${ent.unit}`;
+  }
+
+  // Number in the card language with as many decimals as the state has
+  _formatNumber(num, raw, lang) {
+    const decimals = Math.min(6, (raw.split('.')[1] || '').length);
+    const key = `${lang}:${decimals}`;
+    if (!this._numberFormats) this._numberFormats = new Map();
+    let format = this._numberFormats.get(key);
+    if (!format) {
+      try {
+        format = new Intl.NumberFormat(lang, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+      } catch (err) {
+        format = { format: n => String(n) };
+      }
+      this._numberFormats.set(key, format);
+    }
+    return format.format(num);
   }
 
   _ensureDOM() {
@@ -2087,7 +2548,8 @@ class RehoboamCard extends HTMLElement {
 
       const tHeader = document.createElementNS(ns, 'text');
       tHeader.setAttribute('class', 'label-header');
-      tHeader.textContent = `MONITORING: ${ent.category}`;
+      const L = this._i18n || i18n(this._config.language);
+      tHeader.textContent = `${this._config.monitoring_label || L.text.monitoring}: ${ent.category || L.text.category}`.toUpperCase();
 
       const tSub = document.createElementNS(ns, 'text');
       tSub.setAttribute('class', 'label-sub');

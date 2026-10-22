@@ -34,7 +34,7 @@ function row(st) {
   else if (st.default !== undefined) def = code(st.default);
   let range = '';
   if (st.type === 'number') range = `${code(st.min)} – ${code(st.max)}`;
-  else if (st.type === 'select') range = st.options.map(([v]) => code(v)).join(', ');
+  else if (st.type === 'select') range = st.options.map(([v]) => (v === '' ? 'empty' : code(v))).join(', ');
   else if (st.type === 'threshold') range = `baseline – critical, or ${code(0)} – ${code(1)} with a state map`;
   else if (st.type === 'map') range = `state: ${code(0)} – ${code(1)}`;
   return `| ${code(st.key)} | ${type} | ${def} | ${range} | ${cell(st.tip)} |`;

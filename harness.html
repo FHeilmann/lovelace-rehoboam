@@ -14,6 +14,7 @@ header{display:flex;align-items:center;gap:10px 14px;padding:8px 14px;border-bot
 header h1{margin:0;font-size:14px;font-weight:600;letter-spacing:2px;text-transform:uppercase}
 header .ver{color:var(--muted);font-variant-numeric:tabular-nums}
 header nav{margin-left:auto;display:flex;gap:14px}
+header select{padding:3px 6px;background:var(--field);border:1px solid var(--line);color:var(--text);border-radius:4px;font:inherit}
 header button{padding:3px 9px;border:1px solid var(--line);background:transparent;color:var(--text);border-radius:4px;cursor:pointer}
 main{flex:1;display:flex;min-height:0}
 #cells{flex:1;min-width:0;position:relative;overflow:hidden}
@@ -37,15 +38,15 @@ input[type=number],input[type=text],select{padding:4px 6px;background:var(--fiel
 .ctl input[type=text]{flex:1.4}
 .check{gap:6px;margin:8px 0;cursor:pointer}
 .seg{display:flex;gap:4px;margin:6px 0}
-.seg button,.btn{flex:1;min-width:0;min-height:32px;padding:6px 10px;border:1px solid var(--line);background:#25252d;color:var(--text);border-radius:5px;cursor:pointer;font:500 12px/1.2 system-ui,-apple-system,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background .15s,border-color .15s}
+.seg button,.btn{flex:1;min-width:0;min-height:32px;padding:6px 6px;border:1px solid var(--line);background:#25252d;color:var(--text);border-radius:5px;cursor:pointer;font:500 12px/1.2 system-ui,-apple-system,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background .15s,border-color .15s}
 .seg button:hover,.btn:hover{background:#30303a;border-color:#45454f}
 .seg button.on,.btn.primary{background:var(--on);border-color:#5a8fd8;color:#fff}
 .seg button.on:hover,.btn.primary:hover{background:#4779bd;border-color:#6a9ce0}
 .btn.ghost{background:transparent}
 .btn.done,.btn.done:hover{background:#2e5d3a;border-color:#4a8a5a;color:#fff}
 .btn.add{display:block;width:100%;margin:8px 0 4px;border-style:dashed;background:transparent;color:var(--accent)}
-.sim{display:flex;align-items:center;gap:6px;margin:6px 0}
-.sim>span{color:var(--muted);white-space:nowrap;margin-right:2px}
+.sim{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:6px 0}
+.sim>span{flex:0 0 100%;color:var(--muted)}
 .maprow{margin:4px 0 6px}
 .maprow input[type=text]{flex:0 0 33%;min-width:0}
 .maprow input[type=number]{width:54px}
@@ -60,7 +61,7 @@ details.ent>summary span{flex:1;overflow:hidden;text-overflow:ellipsis;white-spa
 .tip:hover,.tip:focus{color:var(--accent)}
 .tip:hover::after,.tip:focus::after{content:attr(data-tip);position:absolute;left:0;right:0;top:22px;z-index:20;padding:8px 10px;border-radius:6px;background:#2a2a33;color:var(--text);border:1px solid #3a3a46;box-shadow:0 4px 14px rgba(0,0,0,.45);font:400 12px/1.4 system-ui,sans-serif;white-space:normal;pointer-events:none}
 #yaml{margin:6px 0;padding:8px;max-height:320px;overflow:auto;background:var(--field);border:1px solid var(--line);border-radius:4px;font:12px/1.45 ui-monospace,monospace;white-space:pre;color:#cfe3ff}
-.actions{position:sticky;bottom:-14px;z-index:5;display:grid;grid-template-columns:1.25fr 1fr .8fr;gap:6px;margin:12px -14px 0;padding:10px 14px 14px;background:var(--panel);border-top:1px solid var(--line);box-shadow:0 -10px 14px -10px rgba(0,0,0,.7)}
+.actions{position:sticky;bottom:-14px;z-index:5;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:12px -14px 0;padding:10px 14px 14px;background:var(--panel);border-top:1px solid var(--line);box-shadow:0 -10px 14px -10px rgba(0,0,0,.7)}
 .stats{white-space:pre;padding:6px;background:var(--field);border-radius:4px;font:11px ui-monospace,monospace;color:#9f9}
 #toast{position:fixed;left:14px;bottom:14px;z-index:30;max-width:min(420px,calc(100vw - 28px));padding:8px 12px;border-radius:6px;background:#2a2a33;border:1px solid #3a3a46;opacity:0;transition:opacity .25s;pointer-events:none}
 #toast.show{opacity:1}
@@ -79,7 +80,8 @@ details.ent>summary span{flex:1;overflow:hidden;text-overflow:ellipsis;white-spa
   <h1>Rehoboam Card</h1><span class="ver" id="ver"></span>
   <nav>
     <a href="https://github.com/FHeilmann/lovelace-rehoboam">GitHub</a>
-    <a href="https://github.com/FHeilmann/lovelace-rehoboam#installation">Install</a>
+    <a href="https://github.com/FHeilmann/lovelace-rehoboam#installation" id="install-link">Install</a>
+    <select id="lang" aria-label="Language"></select>
     <button id="toggle" type="button">Hide panel</button>
   </nav>
 </header>
@@ -116,9 +118,98 @@ const DEMO_ENTS = [
   { entity: 'person.alex', name: 'Alex', category: 'PRESENCE', angle: 115, state_map: { home: 0, work: 0.3, not_home: 1 }, divergence_threshold: 0.5, _state: 'work', _div: 0.5 },
 ];
 
+// Texts of this page in each card language; the settings labels and tooltips come from the card
+const PAGE_TEXT = {
+  en: {
+    intro: 'Change the settings, move the simulated values, then copy the YAML into a manual card in your dashboard. Tap the centre or a callout to see its action.',
+    install: 'Install', hidePanel: 'Hide panel', showPanel: 'Show panel', language: 'Language',
+    simDark: 'Simulate Home Assistant dark mode', simDarkTip: 'Page only: the dark mode setting that theme Auto follows.',
+    simValue: 'Simulated value', simState: 'Simulated state', numericValue: 'Numeric value',
+    divTip: 'Simulated sensor value for this page only, from 0 (baseline) to 1 (critical). It is not part of the config.',
+    stateTip: 'Simulated state for this page only. A state from the map uses its divergence; "Numeric value" simulates a number between baseline and critical.',
+    simulateAll: 'Simulate all:', calm: 'Calm', critical: 'Critical', random: 'Random',
+    yourConfig: 'Your config', debug: 'Debug', copyYaml: 'Copy YAML', shareLink: 'Share link', reset: 'Reset',
+    shareTitle: 'Copy a link that opens this page with your settings', resetTitle: 'Go back to the card defaults and the example entities',
+    copied: 'Copied', copyFailed: 'Copy failed', heightNote: 'The preview here always fills the window.',
+    tap: 'Tap', hold: 'Hold', on: 'on {entity}',
+    actions: { '': 'Default', none: 'None', 'more-info': 'More info', toggle: 'Toggle', navigate: 'Navigate to a view', url: 'Open a URL', popup: 'browser_mod popup' }
+  },
+  de: {
+    intro: 'Ändere die Einstellungen, bewege die simulierten Werte und kopiere dann das YAML in eine manuelle Karte deines Dashboards. Tippe auf die Mitte oder eine Beschriftung, um ihre Aktion zu sehen.',
+    install: 'Installation', hidePanel: 'Bereich ausblenden', showPanel: 'Bereich einblenden', language: 'Sprache',
+    simDark: 'Dunkelmodus von Home Assistant simulieren', simDarkTip: 'Nur auf dieser Seite: der Dunkelmodus, dem das Design Auto folgt.',
+    simValue: 'Simulierter Wert', simState: 'Simulierter Zustand', numericValue: 'Zahlenwert',
+    divTip: 'Simulierter Sensorwert nur für diese Seite, von 0 (Grundwert) bis 1 (kritisch). Er ist nicht Teil der Konfiguration.',
+    stateTip: 'Simulierter Zustand nur für diese Seite. Ein Zustand aus der Zuordnung nutzt seine Divergenz; „Zahlenwert“ simuliert eine Zahl zwischen Grundwert und kritischem Wert.',
+    simulateAll: 'Alle simulieren:', calm: 'Ruhig', critical: 'Kritisch', random: 'Zufall',
+    yourConfig: 'Deine Konfiguration', debug: 'Debug', copyYaml: 'YAML kopieren', shareLink: 'Link teilen', reset: 'Zurücksetzen',
+    shareTitle: 'Kopiert einen Link, der diese Seite mit deinen Einstellungen öffnet', resetTitle: 'Zurück zu den Standardwerten der Karte und den Beispielentitäten',
+    copied: 'Kopiert', copyFailed: 'Kopieren fehlgeschlagen', heightNote: 'Die Vorschau hier füllt immer das Fenster.',
+    tap: 'Tippen', hold: 'Halten', on: 'auf {entity}',
+    actions: { '': 'Standard', none: 'Keine', 'more-info': 'Mehr Infos', toggle: 'Umschalten', navigate: 'Zu einer Ansicht wechseln', url: 'URL öffnen', popup: 'browser_mod-Popup' }
+  },
+  fr: {
+    intro: 'Modifiez les réglages, déplacez les valeurs simulées, puis copiez le YAML dans une carte manuelle de votre tableau de bord. Appuyez sur le centre ou une étiquette pour voir son action.',
+    install: 'Installation', hidePanel: 'Masquer le panneau', showPanel: 'Afficher le panneau', language: 'Langue',
+    simDark: 'Simuler le mode sombre de Home Assistant', simDarkTip: 'Page uniquement : le mode sombre que suit le thème Auto.',
+    simValue: 'Valeur simulée', simState: 'État simulé', numericValue: 'Valeur numérique',
+    divTip: "Valeur de capteur simulée pour cette page uniquement, de 0 (base) à 1 (critique). Elle ne fait pas partie de la configuration.",
+    stateTip: "État simulé pour cette page uniquement. Un état de la correspondance utilise sa divergence ; « Valeur numérique » simule un nombre entre la base et la valeur critique.",
+    simulateAll: 'Tout simuler :', calm: 'Calme', critical: 'Critique', random: 'Aléatoire',
+    yourConfig: 'Votre configuration', debug: 'Débogage', copyYaml: 'Copier YAML', shareLink: 'Partager', reset: 'Réinitialiser',
+    shareTitle: 'Copie un lien qui ouvre cette page avec vos réglages', resetTitle: 'Revenir aux valeurs par défaut de la carte et aux entités d’exemple',
+    copied: 'Copié', copyFailed: 'Échec de la copie', heightNote: "L'aperçu ici remplit toujours la fenêtre.",
+    tap: 'Appui', hold: 'Maintien', on: 'sur {entity}',
+    actions: { '': 'Par défaut', none: 'Aucune', 'more-info': "Plus d'infos", toggle: 'Basculer', navigate: 'Aller à une vue', url: 'Ouvrir une URL', popup: 'Fenêtre browser_mod' }
+  },
+  es: {
+    intro: 'Cambia los ajustes, mueve los valores simulados y copia el YAML en una tarjeta manual de tu panel. Toca el centro o una etiqueta para ver su acción.',
+    install: 'Instalación', hidePanel: 'Ocultar panel', showPanel: 'Mostrar panel', language: 'Idioma',
+    simDark: 'Simular el modo oscuro de Home Assistant', simDarkTip: 'Solo esta página: el modo oscuro que sigue el tema Auto.',
+    simValue: 'Valor simulado', simState: 'Estado simulado', numericValue: 'Valor numérico',
+    divTip: 'Valor de sensor simulado solo para esta página, de 0 (base) a 1 (crítico). No forma parte de la configuración.',
+    stateTip: 'Estado simulado solo para esta página. Un estado de la asignación usa su divergencia; "Valor numérico" simula un número entre el valor base y el crítico.',
+    simulateAll: 'Simular todo:', calm: 'Tranquilo', critical: 'Crítico', random: 'Aleatorio',
+    yourConfig: 'Tu configuración', debug: 'Depuración', copyYaml: 'Copiar YAML', shareLink: 'Compartir', reset: 'Restablecer',
+    shareTitle: 'Copia un enlace que abre esta página con tus ajustes', resetTitle: 'Volver a los valores predeterminados de la tarjeta y a las entidades de ejemplo',
+    copied: 'Copiado', copyFailed: 'Error al copiar', heightNote: 'Aquí la vista previa siempre llena la ventana.',
+    tap: 'Toque', hold: 'Pulsación larga', on: 'en {entity}',
+    actions: { '': 'Predeterminada', none: 'Ninguna', 'more-info': 'Más información', toggle: 'Alternar', navigate: 'Ir a una vista', url: 'Abrir una URL', popup: 'Ventana de browser_mod' }
+  },
+  nl: {
+    intro: 'Wijzig de instellingen, verschuif de gesimuleerde waarden en kopieer dan de YAML naar een handmatige kaart in je dashboard. Tik op het midden of een label om de actie te zien.',
+    install: 'Installatie', hidePanel: 'Paneel verbergen', showPanel: 'Paneel tonen', language: 'Taal',
+    simDark: 'Donkere modus van Home Assistant simuleren', simDarkTip: 'Alleen deze pagina: de donkere modus die thema Auto volgt.',
+    simValue: 'Gesimuleerde waarde', simState: 'Gesimuleerde status', numericValue: 'Numerieke waarde',
+    divTip: 'Gesimuleerde sensorwaarde alleen voor deze pagina, van 0 (basis) tot 1 (kritiek). Deze hoort niet bij de configuratie.',
+    stateTip: 'Gesimuleerde status alleen voor deze pagina. Een status uit de toewijzing gebruikt zijn divergentie; "Numerieke waarde" simuleert een getal tussen basiswaarde en kritieke waarde.',
+    simulateAll: 'Alles simuleren:', calm: 'Rustig', critical: 'Kritiek', random: 'Willekeurig',
+    yourConfig: 'Jouw configuratie', debug: 'Debug', copyYaml: 'YAML kopiëren', shareLink: 'Deellink', reset: 'Herstellen',
+    shareTitle: 'Kopieert een link die deze pagina met jouw instellingen opent', resetTitle: 'Terug naar de standaardwaarden van de kaart en de voorbeeldentiteiten',
+    copied: 'Gekopieerd', copyFailed: 'Kopiëren mislukt', heightNote: 'Het voorbeeld hier vult altijd het venster.',
+    tap: 'Tik', hold: 'Vasthouden', on: 'op {entity}',
+    actions: { '': 'Standaard', none: 'Geen', 'more-info': 'Meer info', toggle: 'Schakelen', navigate: 'Naar een weergave', url: 'URL openen', popup: 'browser_mod-pop-up' }
+  },
+  it: {
+    intro: "Modifica le impostazioni, sposta i valori simulati e poi copia lo YAML in una scheda manuale della tua dashboard. Tocca il centro o un'etichetta per vederne l'azione.",
+    install: 'Installazione', hidePanel: 'Nascondi pannello', showPanel: 'Mostra pannello', language: 'Lingua',
+    simDark: 'Simula la modalità scura di Home Assistant', simDarkTip: 'Solo questa pagina: la modalità scura che segue il tema Auto.',
+    simValue: 'Valore simulato', simState: 'Stato simulato', numericValue: 'Valore numerico',
+    divTip: 'Valore del sensore simulato solo per questa pagina, da 0 (base) a 1 (critico). Non fa parte della configurazione.',
+    stateTip: 'Stato simulato solo per questa pagina. Uno stato della mappa usa la sua divergenza; "Valore numerico" simula un numero tra valore base e valore critico.',
+    simulateAll: 'Simula tutto:', calm: 'Calmo', critical: 'Critico', random: 'Casuale',
+    yourConfig: 'La tua configurazione', debug: 'Debug', copyYaml: 'Copia YAML', shareLink: 'Condividi', reset: 'Ripristina',
+    shareTitle: 'Copia un link che apre questa pagina con le tue impostazioni', resetTitle: 'Torna ai valori predefiniti della scheda e alle entità di esempio',
+    copied: 'Copiato', copyFailed: 'Copia non riuscita', heightNote: "Qui l'anteprima riempie sempre la finestra.",
+    tap: 'Tocco', hold: 'Pressione prolungata', on: 'su {entity}',
+    actions: { '': 'Predefinita', none: 'Nessuna', 'more-info': 'Più informazioni', toggle: 'Commuta', navigate: 'Vai a una vista', url: 'Apri un URL', popup: 'Popup browser_mod' }
+  }
+};
+let P = PAGE_TEXT.en;
+const fillPage = (text, vars) => text.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
 // The settings list of the card (labels, ranges, tooltips), so this page matches the visual editor
 let SETTINGS = { sections: [], card: [], entity: [] }, CARD_KEYS = [], ENT_KEYS = [];
-let DEFAULTS = {}, state = {}, ENTS = [], cards = [];
+let DEFAULTS = {}, state = {}, ENTS = [], cards = [], statsEl;
 const isSet = v => v !== null && v !== undefined && v !== '';
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
 const roundTo = (v, step) => { const d = Math.max(0, -Math.floor(Math.log10(step))); return Number(v.toFixed(Math.min(d, 10))); };
@@ -195,7 +286,16 @@ function hassStates() {
     const value = mappedState ? e._state : String(roundTo(base + e._div * (crit - base), 0.1));
     states[e.entity] = { state: value, attributes: { unit_of_measurement: mappedState ? '' : e.unit || '', friendly_name: e.name || e.entity } };
   });
-  return { states, themes: { darkMode: state._ha_dark } };
+  // Language and a simple stand-in for Home Assistant's state formatting
+  const lang = state._lang || 'en';
+  const formatEntityState = obj => {
+    const n = Number(obj.state);
+    if (obj.state === '' || !Number.isFinite(n)) return obj.state;
+    const decimals = Math.min(6, (String(obj.state).split('.')[1] || '').length);
+    const unit = obj.attributes.unit_of_measurement;
+    return new Intl.NumberFormat(lang, { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(n) + (unit ? ' ' + unit : '');
+  };
+  return { states, themes: { darkMode: state._ha_dark }, language: lang, locale: { language: lang }, formatEntityState };
 }
 let pending = false;
 function apply() {
@@ -293,9 +393,19 @@ function seg(parent, label, options, key, { tip } = {}) {
   row.appendChild(s);
   parent.appendChild(row);
 }
+function dropdown(parent, label, options, key, { tip } = {}) {
+  const row = el('div', 'row');
+  row.appendChild(labelEl(label, tip));
+  const sel = el('select');
+  options.forEach(([val, name]) => { const o = el('option', '', name); o.value = val; sel.appendChild(o); });
+  sel.value = state[key] ?? '';
+  sel.setAttribute('aria-label', label);
+  sel.onchange = () => { state[key] = sel.value || null; apply(); };
+  row.appendChild(sel);
+  parent.appendChild(row);
+}
 // Action picker for the common actions. The value is the action object of the YAML.
-const ACTIONS = [['', 'Default'], ['none', 'None'], ['more-info', 'More info'], ['toggle', 'Toggle'],
-  ['navigate', 'Navigate to a view'], ['url', 'Open a URL'], ['popup', 'browser_mod popup']];
+const ACTIONS = ['', 'none', 'more-info', 'toggle', 'navigate', 'url', 'popup'];
 const PARAM = { navigate: ['navigation_path', '/lovelace/0'], url: ['url_path', 'https://www.home-assistant.io'], popup: ['title', 'Rehoboam'] };
 function actionKind(a) {
   if (!a) return '';
@@ -318,12 +428,12 @@ function actionField(parent, label, key, { obj = state, tip } = {}) {
   row.appendChild(labelEl(label, tip));
   const ctl = el('div', 'ctl');
   const sel = el('select');
-  ACTIONS.forEach(([val, name]) => { const o = el('option', '', name); o.value = val; sel.appendChild(o); });
+  ACTIONS.forEach(val => { const o = el('option', '', P.actions[val] || PAGE_TEXT.en.actions[val]); o.value = val; sel.appendChild(o); });
   const par = el('input'); par.type = 'text';
   ctl.append(sel, par); row.appendChild(ctl);
   const sync = () => {
     const kind = actionKind(obj[key]);
-    sel.value = ACTIONS.some(([v]) => v === kind) ? kind : '';
+    sel.value = ACTIONS.includes(kind) ? kind : '';
     par.style.display = PARAM[kind] ? '' : 'none';
     par.placeholder = PARAM[kind] ? PARAM[kind][1] : '';
     par.value = actionParam(obj[key], kind);
@@ -336,7 +446,6 @@ function actionField(parent, label, key, { obj = state, tip } = {}) {
 }
 
 // ---- entities ----
-const DIV_TIP = 'Simulated sensor value for this page only, from 0 (baseline) to 1 (critical). It is not part of the config.';
 function thresholdBounds(e) {
   // With a state map the entity thresholds are divergence values (0-1)
   const mapped = hasStateMap(e);
@@ -356,15 +465,14 @@ function autoAngle(idx) {
   return Math.round((22.5 + before * 360 / Math.max(1, count)) % 360);
 }
 let entList, divRows = [], thresholdRows = [];
-const STATE_TIP = 'Simulated state for this page only. A state from the map uses its divergence; "Numeric value" simulates a number between baseline and critical.';
 // Simulated sensor: a state from the state map, or a value between baseline and critical
 function simField(box, e) {
   if (hasStateMap(e)) {
     const row = el('div', 'row');
-    row.appendChild(labelEl('Simulated state', STATE_TIP));
+    row.appendChild(labelEl(P.simState, P.stateTip));
     const sel = el('select');
     [...Object.keys(e.state_map), ''].forEach(st => {
-      const o = el('option', '', st ? `${st} (${e.state_map[st]})` : 'Numeric value'); o.value = st; sel.appendChild(o);
+      const o = el('option', '', st ? `${st} (${e.state_map[st]})` : P.numericValue); o.value = st; sel.appendChild(o);
     });
     if (!isSet(e._state) || !(e._state in e.state_map)) e._state = e._state === '' ? '' : Object.keys(e.state_map)[0];
     sel.value = e._state;
@@ -373,7 +481,7 @@ function simField(box, e) {
     box.appendChild(row);
     if (e._state !== '') return;
   }
-  divRows.push(num(box, 'Simulated value', '_div', 0, 1, 0.01, { obj: e, onChange: pushStates, tip: DIV_TIP }));
+  divRows.push(num(box, P.simValue, '_div', 0, 1, 0.01, { obj: e, onChange: pushStates, tip: P.divTip }));
 }
 // State map rows: state name, divergence slider and number box, remove button
 function mapField(parent, st, e) {
@@ -394,11 +502,12 @@ function mapField(parent, st, e) {
   };
   Object.entries(e.state_map || {}).forEach(([name, v]) => {
     const r = el('div', 'ctl maprow');
-    const nameBox = el('input'); nameBox.type = 'text'; nameBox.value = name; nameBox.placeholder = 'state'; nameBox.setAttribute('aria-label', 'State');
+    const nameBox = el('input'); nameBox.type = 'text'; nameBox.value = name; nameBox.placeholder = SETTINGS.ui.state; nameBox.setAttribute('aria-label', SETTINGS.ui.state);
     const rng = el('input'); rng.type = 'range'; rng.min = 0; rng.max = 1; rng.step = 0.05; rng.value = v;
     const box = el('input'); box.type = 'number'; box.min = 0; box.max = 1; box.step = 0.05; box.value = v;
-    rng.setAttribute('aria-label', `Divergence of ${name}`); box.setAttribute('aria-label', `Divergence of ${name}`);
-    const del = el('button', 'btn danger', '×'); del.type = 'button'; del.setAttribute('aria-label', `Remove ${name}`);
+    const divLabel = fillPage(SETTINGS.ui.divergenceOf, { state: name });
+    rng.setAttribute('aria-label', divLabel); box.setAttribute('aria-label', divLabel);
+    const del = el('button', 'btn danger', '×'); del.type = 'button'; del.setAttribute('aria-label', fillPage(SETTINGS.ui.removeState, { state: name }));
     rng.oninput = () => { box.value = rng.value; save(false); };
     box.onchange = () => { rng.value = box.value; save(false); };
     nameBox.onchange = () => save(true);
@@ -406,7 +515,7 @@ function mapField(parent, st, e) {
     r.append(nameBox, rng, box, del);
     list.appendChild(r);
   });
-  const add = el('button', 'btn', '+ Add state'); add.type = 'button';
+  const add = el('button', 'btn', SETTINGS.ui.addState); add.type = 'button';
   add.onclick = () => {
     const map = { ...(e.state_map || {}) };
     let name = 'new_state';
@@ -426,9 +535,9 @@ function renderEntities() {
     box.ontoggle = () => { e._open = box.open; };
     const sum = el('summary');
     const title = el('span');
-    const setTitle = () => { title.textContent = `#${idx + 1} ${e.category || 'SYSTEM ANOMALY'} · ${e.name || e.entity || 'Unconfigured'}`; };
+    const setTitle = () => { title.textContent = `#${idx + 1} ${e.category || SETTINGS.text.category} · ${e.name || e.entity || SETTINGS.ui.unconfigured}`; };
     setTitle();
-    const rm = el('button', 'btn danger', 'Remove'); rm.type = 'button';
+    const rm = el('button', 'btn danger', SETTINGS.ui.remove); rm.type = 'button';
     rm.onclick = ev => { ev.preventDefault(); ENTS.splice(idx, 1); renderEntities(); apply(); };
     sum.append(title, rm);
     box.appendChild(sum);
@@ -475,7 +584,7 @@ function flash(btn, msg, ok) {
 async function copyText(textValue, btn) {
   try {
     await navigator.clipboard.writeText(textValue);
-    flash(btn, 'Copied', true);
+    flash(btn, P.copied, true);
   } catch (err) {
     // Fallback for browsers without the clipboard API or without permission
     const area = el('textarea'); area.value = textValue;
@@ -483,12 +592,13 @@ async function copyText(textValue, btn) {
     document.body.appendChild(area); area.select();
     const ok = document.execCommand('copy');
     area.remove();
-    flash(btn, ok ? 'Copied' : 'Copy failed', ok);
+    flash(btn, ok ? P.copied : P.copyFailed, ok);
   }
 }
 function shareLink() {
   const cfg = exportConfig();
   cfg.entities = cfg.entities.map((o, i) => ({ ...o, _div: ENTS[i]._div, ...(isSet(ENTS[i]._state) ? { _state: ENTS[i]._state } : {}) }));
+  cfg._lang = state._lang;
   return location.origin + location.pathname + location.search + '#cfg=' + encodeCfg(cfg);
 }
 
@@ -500,10 +610,10 @@ function toast(msg) {
 }
 
 function entitySection(panel) {
-  heading(panel, 'Entities');
+  heading(panel, SETTINGS.ui.entities);
   entList = el('div'); panel.appendChild(entList);
   renderEntities();
-  const addBtn = el('button', 'btn add', '+ Add entity'); addBtn.type = 'button';
+  const addBtn = el('button', 'btn add', SETTINGS.ui.addEntity); addBtn.type = 'button';
   addBtn.onclick = () => {
     const fresh = { entity: '', _div: 0.5, _open: true };
     SETTINGS.entity.forEach(st => { if (st.default !== undefined) fresh[st.key] = st.default; });
@@ -511,14 +621,14 @@ function entitySection(panel) {
   };
   panel.appendChild(addBtn);
   const sim = el('div', 'sim');
-  sim.appendChild(el('span', '', 'Simulate all:'));
+  sim.appendChild(el('span', '', P.simulateAll));
   // Entities with a state map pick the state with the lowest, highest or a random divergence
   const pickState = (e, how) => {
     const entries = Object.entries(e.state_map).sort((a, b) => a[1] - b[1]);
     e._state = (how === 'min' ? entries[0] : how === 'max' ? entries[entries.length - 1] : entries[Math.floor(Math.random() * entries.length)])[0];
   };
   const simAll = (how, div) => ENTS.forEach(e => { if (hasStateMap(e)) pickState(e, how); else e._div = div(); });
-  [['Calm', () => simAll('min', () => 0)], ['Critical', () => simAll('max', () => 1)], ['Random', () => simAll('random', Math.random)]].forEach(([label, fn]) => {
+  [[P.calm, () => simAll('min', () => 0)], [P.critical, () => simAll('max', () => 1)], [P.random, () => simAll('random', Math.random)]].forEach(([label, fn]) => {
     const b = el('button', 'btn', label); b.type = 'button';
     b.onclick = () => { fn(); renderEntities(); pushStates(); };
     sim.appendChild(b);
@@ -529,7 +639,8 @@ function entitySection(panel) {
 // ---- build the page once the card script is loaded ----
 function buildPanel() {
   const panel = document.getElementById('panel');
-  const intro = el('p', 'intro', 'Change the settings, move the simulated values, then copy the YAML into a manual card in your dashboard. Tap the centre or a callout to see its action.');
+  panel.textContent = '';
+  const intro = el('p', 'intro', P.intro);
   panel.appendChild(intro);
 
   const onThreshold = () => { refreshThresholds(); apply(); };
@@ -539,8 +650,8 @@ function buildPanel() {
       const opts = { tip: st.tip };
       switch (st.type) {
         case 'select':
-          seg(panel, st.label, st.options, st.key, opts);
-          if (st.key === 'theme_mode') check(panel, 'Simulate Home Assistant dark mode', '_ha_dark', { tip: 'Page only: the dark mode setting that theme Auto follows.' });
+          (st.options.length > 3 ? dropdown : seg)(panel, st.label, st.options, st.key, opts);
+          if (st.key === 'theme_mode') check(panel, P.simDark, '_ha_dark', { tip: P.simDarkTip });
           break;
         case 'number':
           num(panel, st.label, st.key, st.min, st.max, st.step, {
@@ -549,7 +660,7 @@ function buildPanel() {
           });
           break;
         case 'text': case 'entity':
-          text(panel, st.label, st.key, st.placeholder || '', st.key === 'height' ? { tip: st.tip + ' The preview here always fills the window.' } : opts);
+          text(panel, st.label, st.key, st.placeholder || '', st.key === 'height' ? { tip: `${st.tip} ${P.heightNote}` } : opts);
           break;
         case 'bool': check(panel, st.label, st.key, opts); break;
         case 'action': actionField(panel, st.label, st.key, opts); break;
@@ -558,23 +669,35 @@ function buildPanel() {
   });
   entitySection(panel);
 
-  heading(panel, 'Your config');
+  heading(panel, P.yourConfig);
   yamlBox = el('pre'); yamlBox.id = 'yaml'; panel.appendChild(yamlBox);
-  const dbg = el('details'); dbg.appendChild(el('summary', '', 'Debug'));
+  const dbg = el('details'); dbg.appendChild(el('summary', '', P.debug));
   const stats = el('div', 'stats'); dbg.appendChild(stats); panel.appendChild(dbg);
   const bar = el('div', 'actions');
-  const copyBtn = el('button', 'btn primary', 'Copy YAML'); copyBtn.type = 'button';
+  const copyBtn = el('button', 'btn primary', P.copyYaml); copyBtn.type = 'button';
   copyBtn.onclick = () => copyText(toYaml(exportConfig()) + '\n', copyBtn);
-  const linkBtn = el('button', 'btn', 'Share link'); linkBtn.type = 'button';
-  linkBtn.title = 'Copy a link that opens this page with your settings';
+  const linkBtn = el('button', 'btn', P.shareLink); linkBtn.type = 'button';
+  linkBtn.title = P.shareTitle;
   linkBtn.onclick = () => { const url = shareLink(); history.replaceState(null, '', url); copyText(url, linkBtn); };
-  const resetBtn = el('button', 'btn ghost', 'Reset'); resetBtn.type = 'button';
-  resetBtn.title = 'Go back to the card defaults and the example entities';
+  const resetBtn = el('button', 'btn ghost', P.reset); resetBtn.type = 'button';
+  resetBtn.title = P.resetTitle;
   resetBtn.onclick = () => { location.href = location.pathname + location.search; };
   bar.append(copyBtn, linkBtn, resetBtn);
   panel.appendChild(bar);
   renderYaml();
   return stats;
+}
+
+// Page language: the share link, then ?lang=, then the browser language
+function setLanguage(code) {
+  const lang = normLang(code);
+  state._lang = lang;
+  SETTINGS = customElements.get('lovelace-rehoboam-editor').settingsFor(lang);
+  P = PAGE_TEXT[lang] || PAGE_TEXT.en;
+  document.documentElement.lang = lang;
+  document.getElementById('install-link').textContent = P.install;
+  document.getElementById('lang').setAttribute('aria-label', P.language);
+  document.getElementById('toggle').textContent = document.body.classList.contains('nopanel') ? P.showPanel : P.hidePanel;
 }
 
 function init() {
@@ -594,7 +717,12 @@ function init() {
     if (Array.isArray(shared.entities)) ENTS = shared.entities.map(e => ({ _div: 0.5, ...(typeof e === 'string' ? { entity: e } : e) }));
   }
   document.getElementById('ver').textContent = typeof CARD_VERSION !== 'undefined' ? 'v' + CARD_VERSION : '';
-  const stats = buildPanel();
+  setLanguage((shared && shared._lang) || q.get('lang') || navigator.language);
+  const langSel = document.getElementById('lang');
+  SETTINGS.languages.forEach(([code, name]) => { const o = el('option', '', name); o.value = code; langSel.appendChild(o); });
+  langSel.value = state._lang;
+  langSel.onchange = () => { setLanguage(langSel.value); statsEl = buildPanel(); apply(); };
+  statsEl = buildPanel();
 
   const cells = document.getElementById('cells');
   cells.className = grid ? 'grid' : 'single';
@@ -620,21 +748,21 @@ function init() {
     if (a.browser_mod) what = `${a.browser_mod.service} popup`;
     else if (a.navigation_path) what += ` ${a.navigation_path}`;
     else if (a.url_path) what += ` ${a.url_path}`;
-    const where = config.entity ? ` on ${config.entity}` : '';
+    const where = config.entity ? ' ' + fillPage(P.on, { entity: config.entity }) : '';
     window.lastAction = `${action}: ${what}${where}`;
-    toast(`${action === 'hold' ? 'Hold' : 'Tap'}${where}: ${what}`);
+    toast(`${action === 'hold' ? P.hold : P.tap}${where}: ${what}`);
   });
   setInterval(() => {
     const c = cards.find(Boolean); if (!c) return;
     const st = c._lutStats;
-    stats.textContent = `frames/s: ${st.n}  LUT: ${(st.ms / Math.max(1, st.n)).toFixed(3)} ms\ncanvas: ${c._canvas.width}x${c._canvas.height}\nlast action: ${window.lastAction || '-'}`;
+    statsEl.textContent = `frames/s: ${st.n}  LUT: ${(st.ms / Math.max(1, st.n)).toFixed(3)} ms\ncanvas: ${c._canvas.width}x${c._canvas.height}\nlast action: ${window.lastAction || '-'}`;
     st.n = 0; st.ms = 0;
   }, 1000);
 }
 
 document.getElementById('toggle').onclick = e => {
   const hidden = document.body.classList.toggle('nopanel');
-  e.currentTarget.textContent = hidden ? 'Show panel' : 'Hide panel';
+  e.currentTarget.textContent = hidden ? P.showPanel : P.hidePanel;
   cards.forEach(c => c && c._onResize());
 };
 const s = document.createElement('script');

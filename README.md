@@ -19,6 +19,7 @@ A WebGL custom Lovelace card inspired by the **Westworld Rehoboam** AI system. I
 - **Tap and hold actions**: the centre of the ring and each callout take the standard Home Assistant actions (`more-info`, `toggle`, `navigate`, `url`, `perform-action`, `fire-dom-event`, for example a browser_mod popup).
 - **Directional baseline-to-critical mapping**: both high-is-bad (CPU temperature) and low-is-bad (battery, free disk space) sensors work.
 - **Visual editor**: entity pickers, action pickers, a slider and a number box for each ranged setting, a tooltip on each setting, and collapsible entity sections.
+- **Localized**: the callouts, the visual editor (labels and tooltips) and the playground come in English, German, French, Spanish, Dutch and Italian. Values use the number and state format of Home Assistant.
 - **Dark, light and auto themes**: `auto` follows the dark mode setting of Home Assistant.
 - **Made for low-end tablets**: the card renders at a reduced resolution, uses a low frame rate when the ring is calm, and pauses when it is off screen or in a background tab. The per-frame CPU work stays well below 1 ms on a desktop for 5 entities.
 - **No build step**: a single native Web Component file with no dependencies. The default label font (Barlow Condensed) loads from Google Fonts. Set `font_family` to a local font to make the card fully offline.
@@ -124,6 +125,16 @@ Each entity has a divergence between 0 (at `baseline`) and 1 (at `critical`). It
 
 The card-level `monitoring_threshold` and `divergence_threshold` are fractions (`0.0` – `1.0`) of the range between baseline and critical. The entity-level thresholds are values in the sensor's own unit, for example `70` for 70% humidity. They work in both directions. For an entity with a `state_map`, the entity-level thresholds are divergence values (`0.0` – `1.0`) instead, the same scale as the map. Without any monitoring threshold there is no monitoring state, and the callout is hidden below the divergence threshold.
 
+### Localization
+
+The card shows its callout text in the Home Assistant language of the user, or in the language that `language` sets. It ships English, German, French, Spanish, Dutch and Italian; other languages fall back to English.
+
+- `monitoring_label` and `divergence_label` replace the words MONITORING and DIVERGENCE in the callout header, for example `divergence_label: ALARM`. The `category` of each entity is your own text.
+- Callout values use the Home Assistant state format (Home Assistant 2023.12 or newer): localized numbers (`27,9 °C`) and translated states (`Abwesend` instead of `not_home`). With a `unit` override, the number keeps the local format and the unit is replaced.
+- The visual editor shows its labels and tooltips in the language of the Home Assistant user.
+
+To add a language, copy one block in `TRANSLATIONS` (and in `PAGE_TEXT` in `harness.html` for the playground), translate it, and add the language to `LANGUAGES` and to the `language` option. Missing entries fall back to English.
+
 ---
 
 ## Configuration Options
@@ -156,6 +167,9 @@ The editor, the playground and these tables use the same settings list in `lovel
 | `divergence_threshold` | number | `0.15` | `0` – `1` | Fraction (0-1) of the way from baseline to critical where a callout changes to DIVERGENCE. |
 | `monitoring_threshold` | number | none | `0` – `1` | Fraction (0-1) of the way from baseline to critical where a callout appears as MONITORING. Leave empty for no monitoring state. |
 | `transition_tau` | number | `2.2` | `0.2` – `20` | Time constant in seconds of the smooth change when a value changes. Higher values give slower, calmer motion. |
+| `language` | string | auto | empty, `en`, `de`, `fr`, `es`, `nl`, `it` | Language of the callout text and the value format. Auto follows the Home Assistant language. |
+| `monitoring_label` | string | MONITORING, translated |  | Text before the category on a monitoring callout. Empty uses the translation for the card language. |
+| `divergence_label` | string | DIVERGENCE, translated |  | Text before the category on a diverging callout. Empty uses the translation for the card language. |
 | `font_family` | string | Barlow Condensed |  | CSS font family of the callout labels. The default Barlow Condensed loads from Google Fonts. Set a local font to keep the card offline. |
 | `font_size` | number | `13` | `8` – `32` | Size of the callout label text in px. The leader lines and label spacing scale with it. |
 | `hold_time` | number | `500` | `150` – `5000` | Milliseconds a press must last to count as a hold. Applies to the centre and to the callouts. |
@@ -177,7 +191,7 @@ The editor, the playground and these tables use the same settings list in `lovel
 | ------ | ---- | ------- | ----- | ----------- |
 | `entity` | string | **Required** |  | Home Assistant entity that drives this callout. |
 | `name` | string | Friendly name |  | Label text on the callout. Empty uses the friendly name of the entity. |
-| `category` | string | `SYSTEM ANOMALY` |  | Header text above the label, for example THERMAL VARIANCE. |
+| `category` | string | SYSTEM ANOMALY, translated |  | Header text above the label, for example THERMAL VARIANCE. |
 | `baseline` | number | `0` |  | Value at which the entity is calm (divergence 0). |
 | `critical` | number | `100` |  | Value at which the entity is fully diverged (divergence 1). If it is below the baseline, lower values diverge. |
 | `state_map` | object | none | state: `0` – `1` | Divergence (0-1) for each listed state, for example home 0 and not_home 1. A listed state ignores baseline and critical. With a map, the entity thresholds are divergence values (0-1). |
