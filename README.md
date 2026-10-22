@@ -7,9 +7,9 @@
 **A living divergence ring for your Home Assistant dashboard, after the Rehoboam AI in Westworld.**
 
 [![HACS](https://img.shields.io/badge/HACS-Custom-41BDF5?style=for-the-badge)](https://hacs.xyz)
-[![Release](https://img.shields.io/github/v/release/FHeilmann/lovelace-rehoboam?style=for-the-badge)](https://github.com/FHeilmann/lovelace-rehoboam/releases)
+[![Release](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2FFHeilmann%2Flovelace-rehoboam%2Freleases%2Flatest&query=%24.tag_name&label=release&color=blue&style=for-the-badge)](https://github.com/FHeilmann/lovelace-rehoboam/releases/latest)
 [![Validation](https://img.shields.io/github/actions/workflow/status/FHeilmann/lovelace-rehoboam/validate.yml?branch=main&style=for-the-badge&label=validation)](https://github.com/FHeilmann/lovelace-rehoboam/actions/workflows/validate.yml)
-[![License](https://img.shields.io/github/license/FHeilmann/lovelace-rehoboam?style=for-the-badge)](LICENSE)
+[![License](https://img.shields.io/github/license/FHeilmann/lovelace-rehoboam?style=for-the-badge&label=license)](LICENSE)
 
 [**Try the playground**](https://fheilmann.github.io/lovelace-rehoboam/) · [Install](#installation) · [Quick start](#quick-start) · [All options](#configuration-options)
 
