@@ -46,6 +46,10 @@ input[type=number],input[type=text],select{padding:4px 6px;background:var(--fiel
 .btn.add{display:block;width:100%;margin:8px 0 4px;border-style:dashed;background:transparent;color:var(--accent)}
 .sim{display:flex;align-items:center;gap:6px;margin:6px 0}
 .sim>span{color:var(--muted);white-space:nowrap;margin-right:2px}
+.maprow{margin:4px 0 6px}
+.maprow input[type=text]{flex:0 0 33%;min-width:0}
+.maprow input[type=number]{width:54px}
+.maprow .btn.danger{min-height:28px;padding:2px 9px}
 .btn.danger{flex:none;color:#ff8a80;border-color:#5a3030;background:transparent}
 .pair{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
 details.ent{margin:8px 0;padding:2px 10px 6px;border:1px solid var(--line);border-radius:6px;background:#1e1e25}
@@ -109,6 +113,7 @@ const DEMO_ENTS = [
   { entity: 'sensor.humidity', name: 'Humidity', category: 'HUMIDITY', baseline: 40, critical: 80, unit: '%', angle: 20, _div: 0.45 },
   { entity: 'sensor.commute', name: 'Commute', category: 'COMMUTE', baseline: 20, critical: 90, unit: 'min', angle: 335, monitoring_threshold: 40, divergence_threshold: 60, always_visible: true, _div: 0.36 },
   { entity: 'sensor.battery', name: 'Battery', category: 'BATTERY', baseline: 100, critical: 20, unit: '%', angle: 205, _div: 0.5 },
+  { entity: 'person.alex', name: 'Alex', category: 'PRESENCE', angle: 115, state_map: { home: 0, work: 0.3, not_home: 1 }, divergence_threshold: 0.5, _state: 'work', _div: 0.5 },
 ];
 
 // The settings list of the card (labels, ranges, tooltips), so this page matches the visual editor
@@ -186,8 +191,9 @@ function hassStates() {
     if (!e.entity) return;
     const base = isSet(e.baseline) ? Number(e.baseline) : 0;
     const crit = isSet(e.critical) ? Number(e.critical) : 100;
-    const val = base + e._div * (crit - base);
-    states[e.entity] = { state: String(roundTo(val, 0.1)), attributes: { unit_of_measurement: e.unit || '', friendly_name: e.name || e.entity } };
+    const mappedState = hasStateMap(e) && isSet(e._state) && e._state in e.state_map;
+    const value = mappedState ? e._state : String(roundTo(base + e._div * (crit - base), 0.1));
+    states[e.entity] = { state: value, attributes: { unit_of_measurement: mappedState ? '' : e.unit || '', friendly_name: e.name || e.entity } };
   });
   return { states, themes: { darkMode: state._ha_dark } };
 }
@@ -332,8 +338,10 @@ function actionField(parent, label, key, { obj = state, tip } = {}) {
 // ---- entities ----
 const DIV_TIP = 'Simulated sensor value for this page only, from 0 (baseline) to 1 (critical). It is not part of the config.';
 function thresholdBounds(e) {
-  const base = isSet(e.baseline) ? Number(e.baseline) : 0;
-  const crit = isSet(e.critical) ? Number(e.critical) : 100;
+  // With a state map the entity thresholds are divergence values (0-1)
+  const mapped = hasStateMap(e);
+  const base = mapped ? 0 : isSet(e.baseline) ? Number(e.baseline) : 0;
+  const crit = mapped ? 1 : isSet(e.critical) ? Number(e.critical) : 100;
   const lo = Math.min(base, crit), hi = Math.max(base, crit);
   const span = hi - lo;
   const step = span > 0 ? Math.pow(10, Math.floor(Math.log10(span / 100))) : 1;
@@ -348,6 +356,67 @@ function autoAngle(idx) {
   return Math.round((22.5 + before * 360 / Math.max(1, count)) % 360);
 }
 let entList, divRows = [], thresholdRows = [];
+const STATE_TIP = 'Simulated state for this page only. A state from the map uses its divergence; "Numeric value" simulates a number between baseline and critical.';
+// Simulated sensor: a state from the state map, or a value between baseline and critical
+function simField(box, e) {
+  if (hasStateMap(e)) {
+    const row = el('div', 'row');
+    row.appendChild(labelEl('Simulated state', STATE_TIP));
+    const sel = el('select');
+    [...Object.keys(e.state_map), ''].forEach(st => {
+      const o = el('option', '', st ? `${st} (${e.state_map[st]})` : 'Numeric value'); o.value = st; sel.appendChild(o);
+    });
+    if (!isSet(e._state) || !(e._state in e.state_map)) e._state = e._state === '' ? '' : Object.keys(e.state_map)[0];
+    sel.value = e._state;
+    sel.onchange = () => { e._state = sel.value; renderEntities(); pushStates(); };
+    row.appendChild(sel);
+    box.appendChild(row);
+    if (e._state !== '') return;
+  }
+  divRows.push(num(box, 'Simulated value', '_div', 0, 1, 0.01, { obj: e, onChange: pushStates, tip: DIV_TIP }));
+}
+// State map rows: state name, divergence slider and number box, remove button
+function mapField(parent, st, e) {
+  const row = el('div', 'row');
+  row.appendChild(labelEl(st.label, st.tip));
+  const list = el('div');
+  const save = rerender => {
+    const map = {};
+    list.querySelectorAll('.maprow').forEach(r => {
+      const name = r.querySelector('input[type=text]').value.trim();
+      const v = Number(r.querySelector('input[type=number]').value);
+      if (name) map[name] = Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0;
+    });
+    const had = hasStateMap(e);
+    e.state_map = Object.keys(map).length ? map : null;
+    if (rerender || had !== hasStateMap(e)) renderEntities();
+    apply();
+  };
+  Object.entries(e.state_map || {}).forEach(([name, v]) => {
+    const r = el('div', 'ctl maprow');
+    const nameBox = el('input'); nameBox.type = 'text'; nameBox.value = name; nameBox.placeholder = 'state'; nameBox.setAttribute('aria-label', 'State');
+    const rng = el('input'); rng.type = 'range'; rng.min = 0; rng.max = 1; rng.step = 0.05; rng.value = v;
+    const box = el('input'); box.type = 'number'; box.min = 0; box.max = 1; box.step = 0.05; box.value = v;
+    rng.setAttribute('aria-label', `Divergence of ${name}`); box.setAttribute('aria-label', `Divergence of ${name}`);
+    const del = el('button', 'btn danger', '×'); del.type = 'button'; del.setAttribute('aria-label', `Remove ${name}`);
+    rng.oninput = () => { box.value = rng.value; save(false); };
+    box.onchange = () => { rng.value = box.value; save(false); };
+    nameBox.onchange = () => save(true);
+    del.onclick = () => { r.remove(); save(true); };
+    r.append(nameBox, rng, box, del);
+    list.appendChild(r);
+  });
+  const add = el('button', 'btn', '+ Add state'); add.type = 'button';
+  add.onclick = () => {
+    const map = { ...(e.state_map || {}) };
+    let name = 'new_state';
+    for (let n = 2; name in map; n++) name = `new_state_${n}`;
+    map[name] = 1; e.state_map = map;
+    renderEntities(); apply();
+  };
+  row.append(list, add);
+  parent.appendChild(row);
+}
 function renderEntities() {
   entList.textContent = '';
   divRows = []; thresholdRows = [];
@@ -365,7 +434,7 @@ function renderEntities() {
     box.appendChild(sum);
     const changed = () => { setTitle(); apply(); };
     const bounds = () => { refreshThresholds(); changed(); };
-    divRows.push(num(box, 'Simulated value', '_div', 0, 1, 0.01, { obj: e, onChange: pushStates, tip: DIV_TIP }));
+    simField(box, e);
     const b = thresholdBounds(e);
     const thresholds = [];
     const pairs = { name: 'category', baseline: 'critical' };
@@ -379,9 +448,10 @@ function renderEntities() {
         case 'entity': case 'text': text(parent, st.label, st.key, st.placeholder || '', { ...opts, onChange: changed }); break;
         case 'plain': plainNum(parent, st.label, st.key, { ...opts, onChange: bounds }); break;
         case 'number': num(parent, st.label, st.key, st.min, st.max, st.step, { ...opts, nullable: st.nullable, placeholder: st.placeholder || '', unsetAt: st.key === 'angle' ? autoAngle(idx) : st.min }); break;
-        case 'threshold': thresholds.push(num(parent, st.label, st.key, b.lo, b.hi, b.step, { ...opts, nullable: true, placeholder: st.placeholder || '', unsetAt: st.key === 'divergence_threshold' ? b.divAt : b.monAt })); break;
+        case 'threshold': thresholds.push(num(parent, hasStateMap(e) ? st.mapLabel : st.label, st.key, b.lo, b.hi, b.step, { ...opts, nullable: true, placeholder: st.placeholder || '', unsetAt: st.key === 'divergence_threshold' ? b.divAt : b.monAt })); break;
         case 'bool': check(parent, st.label, st.key, opts); break;
         case 'action': actionField(parent, st.label, st.key, opts); break;
+        case 'map': mapField(parent, st, e); break;
       }
     });
     thresholdRows.push({ e, rows: thresholds });
@@ -418,7 +488,7 @@ async function copyText(textValue, btn) {
 }
 function shareLink() {
   const cfg = exportConfig();
-  cfg.entities = cfg.entities.map((o, i) => ({ ...o, _div: ENTS[i]._div }));
+  cfg.entities = cfg.entities.map((o, i) => ({ ...o, _div: ENTS[i]._div, ...(isSet(ENTS[i]._state) ? { _state: ENTS[i]._state } : {}) }));
   return location.origin + location.pathname + location.search + '#cfg=' + encodeCfg(cfg);
 }
 
@@ -442,9 +512,15 @@ function entitySection(panel) {
   panel.appendChild(addBtn);
   const sim = el('div', 'sim');
   sim.appendChild(el('span', '', 'Simulate all:'));
-  [['Calm', () => ENTS.forEach(e => { e._div = 0; })], ['Critical', () => ENTS.forEach(e => { e._div = 1; })], ['Random', () => ENTS.forEach(e => { e._div = Math.random(); })]].forEach(([label, fn]) => {
+  // Entities with a state map pick the state with the lowest, highest or a random divergence
+  const pickState = (e, how) => {
+    const entries = Object.entries(e.state_map).sort((a, b) => a[1] - b[1]);
+    e._state = (how === 'min' ? entries[0] : how === 'max' ? entries[entries.length - 1] : entries[Math.floor(Math.random() * entries.length)])[0];
+  };
+  const simAll = (how, div) => ENTS.forEach(e => { if (hasStateMap(e)) pickState(e, how); else e._div = div(); });
+  [['Calm', () => simAll('min', () => 0)], ['Critical', () => simAll('max', () => 1)], ['Random', () => simAll('random', Math.random)]].forEach(([label, fn]) => {
     const b = el('button', 'btn', label); b.type = 'button';
-    b.onclick = () => { fn(); divRows.forEach(r => r.sync()); pushStates(); };
+    b.onclick = () => { fn(); renderEntities(); pushStates(); };
     sim.appendChild(b);
   });
   panel.appendChild(sim);
