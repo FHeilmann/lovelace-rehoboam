@@ -56,7 +56,7 @@ Every entity you add gets its own place on the ring. While its value stays near 
 **Light on old tablets**
 - Lower render resolution and frame rate while the ring is calm
 - Pauses when it is off screen or in a background tab
-- One file, no dependencies, no build step
+- One file, no dependencies, no build step, no external requests
 
 </td>
 </tr>
@@ -288,7 +288,7 @@ The editor, the playground and these tables use the same settings list in `lovel
 | `language` | string | auto | empty, `en`, `de`, `fr`, `es`, `nl`, `it` | Language of the callout text and the value format. Auto follows the Home Assistant language. |
 | `monitoring_label` | string | MONITORING, translated |  | Text before the category on a monitoring callout. Empty uses the translation for the card language. |
 | `divergence_label` | string | DIVERGENCE, translated |  | Text before the category on a diverging callout. Empty uses the translation for the card language. |
-| `font_family` | string | Barlow Condensed |  | CSS font family of the callout labels. The default Barlow Condensed loads from Google Fonts. Set a local font to keep the card offline. |
+| `font_family` | string | Roboto |  | CSS font family of the callout labels and the title. The default is Roboto, the font of Home Assistant. A font that is not installed falls back to the next one in the list. "Barlow Condensed" loads from Google Fonts. |
 | `font_size` | number | `13` | `8` – `32` | Size of the callout label text in px. The leader lines and label spacing scale with it. |
 | **Interaction** | | | | |
 | `hold_time` | number | `500` | `150` – `5000` | Milliseconds a press must last to count as a hold. Applies to the centre and to the callouts. |
@@ -338,7 +338,7 @@ The settings list (`CARD_SETTINGS` and `ENTITY_SETTINGS` in `lovelace-rehoboam.j
 python3 -m http.server 8766 --bind 127.0.0.1
 ```
 
-Then open `http://127.0.0.1:8766/harness.html`. URL options for testing: `grid=1` shows the 4 theme and eclipse presets side by side, `one=0` to `one=3` shows one preset, `panel=0` hides the settings panel, and `v=<name>` loads `<name>.js` instead of the card.
+Then open `http://127.0.0.1:8766/harness.html`. URL options for testing: `grid=1` shows the 4 theme and eclipse presets side by side, `one=0` to `one=3` shows one preset, and `panel=0` hides the settings panel.
 
 The README images come from the playground. With the server running, `node scripts/screenshots.mjs <tmp dir>` captures them with headless Chromium, and `python3 scripts/build-images.py <tmp dir> images` turns them into `images/hero.webp` and the PNGs (needs Pillow).
 

@@ -97,10 +97,9 @@ details.ent>summary span{flex:1;overflow:hidden;text-overflow:ellipsis;white-spa
 // Playground for the Rehoboam card without Home Assistant: change the settings, simulate sensor
 // values, and copy the YAML config. Locally: serve this folder over HTTP (python3 -m http.server)
 // and open harness.html.
-// URL options: #cfg=<base64 JSON> (share link), v=<script name without .js>, grid=1 (4 presets),
+// URL options: #cfg=<base64 JSON> (share link), grid=1 (4 presets),
 // one=0..3 (preset), panel=0
 const q = new URLSearchParams(location.search);
-const scriptName = q.get('v') || 'lovelace-rehoboam';
 const grid = q.get('grid') === '1';
 const one = grid ? null : q.get('one');
 if (q.get('panel') === '0') document.body.classList.add('nopanel');
@@ -823,7 +822,7 @@ document.getElementById('toggle').onclick = e => {
   cards.forEach(c => c && c._onResize());
 };
 const s = document.createElement('script');
-s.src = scriptName + '.js?' + Date.now();
+s.src = 'lovelace-rehoboam.js?' + Date.now();
 s.onload = init;
 document.head.appendChild(s);
 </script>

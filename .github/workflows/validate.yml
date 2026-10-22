@@ -14,10 +14,10 @@ jobs:
     name: Validate HACS repository
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: HACS Action
-        uses: hacs/action@main
+        uses: hacs/action@d556e736723344f83838d08488c983a15381059a # 22.5.0
         with:
           category: plugin
           ignore: "description topics images"
@@ -27,7 +27,7 @@ jobs:
     name: README option tables match the settings list
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Check README option tables
         run: node scripts/readme-options.mjs --check

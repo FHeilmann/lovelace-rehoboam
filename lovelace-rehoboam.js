@@ -314,9 +314,9 @@ function hexPoints(r) {
 }
 
 const DEFAULT_HEIGHT = '500px';
-// Condensed DIN-style face like the show's labels. Barlow Condensed loads from Google Fonts once
-// per page; set font_family to a local font to avoid the request.
-const DEFAULT_FONT = "'Barlow Condensed', 'Roboto Condensed', 'Arial Narrow', sans-serif";
+// Roboto ships with Home Assistant, so the default needs no download. Barlow Condensed (closer to
+// the show's labels) loads from Google Fonts, but only when font_family names it.
+const DEFAULT_FONT = "Roboto, 'Helvetica Neue', Arial, sans-serif";
 const GOOGLE_FONT_URL = 'https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600&display=swap';
 function ensureLabelFont(family) {
   if (!family.includes('Barlow Condensed') || document.getElementById('rehoboam-label-font')) return;
@@ -388,6 +388,14 @@ function computeDirectionalDivergence(val, baseline, critical) {
   if (Math.abs(span) < 1e-6) return 0.0;
   const raw = (val - baseline) / span;
   return Math.max(0.0, Math.min(1.0, raw));
+}
+
+// font_family and height go into the card's style sheet; anything the browser does not accept for
+// that property (for example text that closes the rule and adds its own) falls back to the default
+function cssValue(property, value, fallback) {
+  const text = value === undefined || value === null ? '' : String(value).trim();
+  if (!text || /[;{}<>\\]/.test(text)) return fallback;
+  return typeof CSS === 'undefined' || CSS.supports(property, text) ? text : fallback;
 }
 
 function roundToStep(value, step) {
@@ -479,8 +487,8 @@ const CARD_SETTINGS = [
     tip: 'Text before the category on a monitoring callout. Empty uses the translation for the card language.' },
   { key: 'divergence_label', section: 'text', type: 'text', label: 'Divergence text', defaultText: 'DIVERGENCE, translated',
     tip: 'Text before the category on a diverging callout. Empty uses the translation for the card language.' },
-  { key: 'font_family', section: 'text', type: 'text', label: 'Label font (CSS font-family)', placeholder: 'Barlow Condensed (default)', defaultText: 'Barlow Condensed',
-    tip: 'CSS font family of the callout labels. The default Barlow Condensed loads from Google Fonts. Set a local font to keep the card offline.' },
+  { key: 'font_family', section: 'text', type: 'text', label: 'Label font (CSS font-family)', placeholder: 'Roboto (default)', defaultText: 'Roboto',
+    tip: 'CSS font family of the callout labels and the title. The default is Roboto, the font of Home Assistant. A font that is not installed falls back to the next one in the list. "Barlow Condensed" loads from Google Fonts.' },
   { key: 'font_size', section: 'text', type: 'number', label: 'Label font size (px)', min: 8, max: 32, step: 0.5, default: DEFAULT_FONT_SIZE,
     tip: 'Size of the callout label text in px. The leader lines and label spacing scale with it.' },
 
@@ -605,7 +613,7 @@ const TRANSLATIONS = {
       language: ['Sprache', 'Sprache der Beschriftungstexte und der Wertformatierung. Auto folgt der Sprache von Home Assistant.'],
       monitoring_label: ['Text für Überwachung', 'Text vor der Kategorie einer Beschriftung im Überwachungszustand. Leer nutzt die Übersetzung der Kartensprache.'],
       divergence_label: ['Text für Divergenz', 'Text vor der Kategorie einer Beschriftung im Divergenzzustand. Leer nutzt die Übersetzung der Kartensprache.'],
-      font_family: ['Beschriftungsschrift (CSS font-family)', 'CSS-Schriftfamilie der Beschriftungen. Die Standardschrift Barlow Condensed lädt von Google Fonts. Setze eine lokale Schrift, damit die Karte offline bleibt.', 'Barlow Condensed (Standard)'],
+      font_family: ["Beschriftungsschrift (CSS font-family)", "CSS-Schriftfamilie der Beschriftungen und des Titels. Standard ist Roboto, die Schrift von Home Assistant. Eine nicht installierte Schrift fällt auf die nächste in der Liste zurück. „Barlow Condensed“ lädt von Google Fonts.", "Roboto (Standard)"],
       font_size: ['Schriftgröße (px)', 'Größe des Beschriftungstexts in px. Führungslinien und Abstände skalieren mit.'],
       hold_time: ['Haltedauer (ms)', 'Millisekunden, die ein Druck dauern muss, um als Halten zu gelten. Gilt für die Mitte und die Beschriftungen.'],
       center_entity: ['Entität der Mitte', 'Entität, die die Aktionen der Mitte nutzen, zum Beispiel für Mehr-Info oder Umschalten.'],
@@ -675,7 +683,7 @@ const TRANSLATIONS = {
       language: ['Langue', 'Langue des textes des étiquettes et du format des valeurs. Auto suit la langue de Home Assistant.'],
       monitoring_label: ['Texte de surveillance', "Texte avant la catégorie d'une étiquette en surveillance. Vide utilise la traduction de la langue de la carte."],
       divergence_label: ['Texte de divergence', "Texte avant la catégorie d'une étiquette en divergence. Vide utilise la traduction de la langue de la carte."],
-      font_family: ['Police des étiquettes (CSS font-family)', 'Famille de polices CSS des étiquettes. La police par défaut Barlow Condensed se charge depuis Google Fonts. Choisissez une police locale pour garder la carte hors ligne.', 'Barlow Condensed (par défaut)'],
+      font_family: ["Police des étiquettes (CSS font-family)", "Famille de polices CSS des étiquettes et du titre. Par défaut Roboto, la police de Home Assistant. Une police non installée passe à la suivante de la liste. « Barlow Condensed » se charge depuis Google Fonts.", "Roboto (par défaut)"],
       font_size: ['Taille de police (px)', 'Taille du texte des étiquettes en px. Les lignes de rappel et les espacements suivent.'],
       hold_time: ["Durée d'appui (ms)", "Millisecondes qu'un appui doit durer pour compter comme maintien. S'applique au centre et aux étiquettes."],
       center_entity: ['Entité du centre', "Entité utilisée par les actions du centre, par exemple pour plus d'infos ou basculer."],
@@ -745,7 +753,7 @@ const TRANSLATIONS = {
       language: ['Idioma', 'Idioma de los textos de las etiquetas y del formato de los valores. Auto sigue el idioma de Home Assistant.'],
       monitoring_label: ['Texto de monitorización', 'Texto antes de la categoría en una etiqueta en monitorización. Vacío usa la traducción del idioma de la tarjeta.'],
       divergence_label: ['Texto de divergencia', 'Texto antes de la categoría en una etiqueta en divergencia. Vacío usa la traducción del idioma de la tarjeta.'],
-      font_family: ['Fuente de las etiquetas (CSS font-family)', 'Familia de fuentes CSS de las etiquetas. La fuente predeterminada Barlow Condensed se carga desde Google Fonts. Usa una fuente local para que la tarjeta funcione sin conexión.', 'Barlow Condensed (predeterminada)'],
+      font_family: ["Fuente de las etiquetas (CSS font-family)", "Familia de fuentes CSS de las etiquetas y del título. La predeterminada es Roboto, la fuente de Home Assistant. Una fuente no instalada pasa a la siguiente de la lista. \"Barlow Condensed\" se carga desde Google Fonts.", "Roboto (predeterminada)"],
       font_size: ['Tamaño de fuente (px)', 'Tamaño del texto de las etiquetas en px. Las líneas guía y los espacios se ajustan con él.'],
       hold_time: ['Duración de pulsación (ms)', 'Milisegundos que debe durar una pulsación para contar como mantener. Se aplica al centro y a las etiquetas.'],
       center_entity: ['Entidad del centro', 'Entidad que usan las acciones del centro, por ejemplo para más información o alternar.'],
@@ -815,7 +823,7 @@ const TRANSLATIONS = {
       language: ['Taal', 'Taal van de labelteksten en de opmaak van waarden. Auto volgt de taal van Home Assistant.'],
       monitoring_label: ['Tekst voor bewaking', 'Tekst voor de categorie op een label in bewaking. Leeg gebruikt de vertaling voor de taal van de kaart.'],
       divergence_label: ['Tekst voor divergentie', 'Tekst voor de categorie op een label in divergentie. Leeg gebruikt de vertaling voor de taal van de kaart.'],
-      font_family: ['Lettertype labels (CSS font-family)', 'CSS-lettertypefamilie van de labels. Het standaardlettertype Barlow Condensed laadt van Google Fonts. Kies een lokaal lettertype om de kaart offline te houden.', 'Barlow Condensed (standaard)'],
+      font_family: ["Lettertype labels (CSS font-family)", "CSS-lettertypefamilie van de labels en de titel. Standaard is Roboto, het lettertype van Home Assistant. Een niet-geïnstalleerd lettertype valt terug op het volgende in de lijst. \"Barlow Condensed\" laadt van Google Fonts.", "Roboto (standaard)"],
       font_size: ['Lettergrootte (px)', 'Grootte van de labeltekst in px. Verbindingslijnen en afstanden schalen mee.'],
       hold_time: ['Vasthoudduur (ms)', 'Milliseconden die een druk moet duren om als vasthouden te tellen. Geldt voor het midden en de labels.'],
       center_entity: ['Entiteit van het midden', 'Entiteit die de acties van het midden gebruiken, bijvoorbeeld voor meer info of schakelen.'],
@@ -885,7 +893,7 @@ const TRANSLATIONS = {
       language: ['Lingua', 'Lingua dei testi delle etichette e del formato dei valori. Auto segue la lingua di Home Assistant.'],
       monitoring_label: ['Testo di monitoraggio', "Testo prima della categoria in un'etichetta in monitoraggio. Vuoto usa la traduzione della lingua della scheda."],
       divergence_label: ['Testo di divergenza', "Testo prima della categoria in un'etichetta in divergenza. Vuoto usa la traduzione della lingua della scheda."],
-      font_family: ['Carattere delle etichette (CSS font-family)', 'Famiglia di caratteri CSS delle etichette. Il carattere predefinito Barlow Condensed si carica da Google Fonts. Imposta un carattere locale per tenere la scheda offline.', 'Barlow Condensed (predefinito)'],
+      font_family: ["Carattere delle etichette (CSS font-family)", "Famiglia di caratteri CSS delle etichette e del titolo. Il predefinito è Roboto, il carattere di Home Assistant. Un carattere non installato passa al successivo della lista. \"Barlow Condensed\" si carica da Google Fonts.", "Roboto (predefinito)"],
       font_size: ['Dimensione carattere (px)', 'Dimensione del testo delle etichette in px. Linee guida e spaziature si adattano.'],
       hold_time: ['Durata pressione (ms)', 'Millisecondi che una pressione deve durare per contare come tenuta. Vale per il centro e per le etichette.'],
       center_entity: ['Entità del centro', 'Entità usata dalle azioni del centro, per esempio per più informazioni o commutare.'],
@@ -1830,14 +1838,14 @@ class RehoboamCard extends HTMLElement {
 
     this._config = {
       theme_mode: ['light', 'auto'].includes(themeMode) ? themeMode : 'dark',
-      font_family: config.font_family ? String(config.font_family) : DEFAULT_FONT,
+      font_family: cssValue('font-family', config.font_family, DEFAULT_FONT),
       title: config.title ? String(config.title) : '',
       subtitle: config.subtitle ? String(config.subtitle) : '',
       language: config.language ? String(config.language) : null,
       monitoring_label: config.monitoring_label ? String(config.monitoring_label) : null,
       divergence_label: config.divergence_label ? String(config.divergence_label) : null,
       font_size: opt('font_size'),
-      height: config.height ? String(config.height) : DEFAULT_HEIGHT,
+      height: cssValue('height', config.height, DEFAULT_HEIGHT),
       eclipse_angle: eclipseAngleDeg,
       eclipse_follow: eclipseFollow,
       eclipse_intensity: opt('eclipse_intensity'),

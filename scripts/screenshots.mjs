@@ -53,6 +53,17 @@ const evaluate = expr => send('Runtime.evaluate', { expression: expr, awaitPromi
 async function open(url, width, height, { scale = 1, header = true } = {}) {
   await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: scale, mobile: false });
   await send('Page.navigate', { url });
+  // Home Assistant ships Roboto; load it here so the shots match a dashboard on any machine
+  await evaluate(`(async () => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=block';
+    document.head.appendChild(link);
+    await new Promise(r => { link.onload = r; link.onerror = r; });
+    await document.fonts.load('600 13px Roboto');
+    await document.fonts.load('500 12px Roboto');
+    return true;
+  })()`);
   await sleep(1500);
   // The card shots show the card only, without the page header
   if (!header) await evaluate("document.querySelector('header').style.display = 'none'; window.dispatchEvent(new Event('resize')); true");

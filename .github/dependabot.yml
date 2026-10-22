@@ -1,0 +1,9 @@
+version: 2
+updates:
+  # Keeps the pinned action hashes in the workflows up to date
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
