@@ -1,0 +1,274 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Rehoboam Test Bench</title><style>
+body{margin:0;background:#444;font:12px/1.35 system-ui,sans-serif;color:#ddd}
+.grid{display:grid;grid-template-columns:640px 640px}
+.grid .cell{width:640px;height:353px;overflow:hidden}
+.single .cell{display:none}
+.single .cell.sel{display:block;width:calc(100vw - 300px);height:100vh;overflow:hidden}
+body.nopanel .single .cell.sel{width:100vw}
+#panel{position:fixed;top:0;right:0;width:300px;height:100vh;overflow-y:auto;box-sizing:border-box;padding:10px 12px;background:#1c1c22;border-left:1px solid #333}
+body.nopanel #panel{display:none}
+#panel h3{margin:14px 0 6px;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#7fb8ff}
+#panel h3:first-child{margin-top:0}
+.row{display:grid;grid-template-columns:1fr 52px;gap:2px 6px;align-items:center;margin:4px 0}
+.row label{grid-column:1/3;color:#aaa}
+.row input[type=range]{width:100%}
+.row output{text-align:right;font-variant-numeric:tabular-nums;color:#fff}
+.row input[type=text]{grid-column:1/3;padding:4px 6px;background:#111;border:1px solid #444;color:#ddd;border-radius:4px}
+.check{display:flex;gap:6px;align-items:center;margin:6px 0}
+.seg{display:flex;gap:4px;margin:4px 0}
+.seg button,.btn{flex:1;padding:5px;border:1px solid #555;background:#2a2a32;color:#ddd;border-radius:4px;cursor:pointer}
+.seg button.on{background:#3d6fb0;border-color:#5a8fd8;color:#fff}
+details{margin:6px 0;padding:4px 8px;border:1px solid #333;border-radius:4px;background:#22222a}
+summary{cursor:pointer;color:#ccc}
+.stats{white-space:pre;margin-top:12px;padding:6px;background:#111;border-radius:4px;font-family:monospace;color:#9f9}
+#toggle{position:fixed;top:6px;right:306px;z-index:2;padding:3px 8px;border:1px solid #555;background:#1c1c22;color:#ddd;border-radius:4px;cursor:pointer}
+body.nopanel #toggle{right:6px}
+</style></head><body>
+<button id="toggle">panel</button>
+<div id="cells"><div class="cell" id="c0"></div><div class="cell" id="c1"></div><div class="cell" id="c2"></div><div class="cell" id="c3"></div></div>
+<div id="panel"></div>
+<script>
+// Test bench for the Rehoboam card without Home Assistant. Serve this folder over HTTP
+// (for example `python3 -m http.server`) and open harness.html.
+// URL options: v=<script name without .js>, one=0..3 (preset), grid=1 (4-up), ring, rs, cfg=<JSON>, panel=0
+const q = new URLSearchParams(location.search);
+const v = q.get('v') || 'lovelace-rehoboam';
+const grid = q.get('grid') === '1';
+const one = grid ? null : (q.get('one') ?? '0');
+const urlCfg = JSON.parse(q.get('cfg') || '{}');
+if (q.get('panel') === '0') document.body.classList.add('nopanel');
+document.getElementById('toggle').onclick = () => { document.body.classList.toggle('nopanel'); cards.forEach(c => c && c._onResize()); };
+
+// Test sensors. `div` is the panel's divergence slider (0-1 of baseline -> critical); `own` turns the
+// entity's own thresholds on or off.
+const ENTS = [
+  {entity:'sensor.pm25', name:'PM2.5', category:'AIRQUALITY', baseline:5, critical:60, angle:180, unit:'PM2.5', div:0.85, own:true, monitoring_threshold:15, divergence_threshold:35, always_visible:false},
+  {entity:'sensor.temp', name:'Temperature', category:'TEMPERATURE', baseline:20, critical:35, angle:50, unit:'°C', div:0.53, own:false, monitoring_threshold:24, divergence_threshold:30, always_visible:false},
+  {entity:'sensor.hum', name:'Humidity', category:'HUMIDITY', baseline:40, critical:80, angle:20, unit:'%', div:0.45, own:false, monitoring_threshold:50, divergence_threshold:65, always_visible:false},
+  {entity:'sensor.commute', name:'Commute', category:'COMMUTE', baseline:20, critical:90, angle:335, unit:'min', div:0.36, own:true, monitoring_threshold:40, divergence_threshold:60, always_visible:true},
+  {entity:'sensor.batt', name:'Battery', category:'BATTERY', baseline:100, critical:20, angle:205, unit:'%', div:0.50, own:false, monitoring_threshold:60, divergence_threshold:40, always_visible:false},
+];
+const PRESETS = [
+  {theme_mode:'dark', test_divergence:0},
+  {theme_mode:'light', test_divergence:0},
+  {theme_mode:'dark', test_divergence:1, eclipse_angle:180},
+  {theme_mode:'light', test_divergence:1, eclipse_angle:180},
+];
+
+// Card options the panel edits. Keys starting with '_' belong to the test page only.
+// In grid mode theme and eclipse stay per cell.
+const state = {
+  theme_mode: 'dark', _ha_dark: true,
+  _eclipse_follow: true, eclipse_angle: 180, _eclipse_override: false, test_divergence: 1,
+  eclipse_intensity: 1.0, ray_intensity: 0.35,
+  amplitude_scale: 1.25, summit_width: 1.0, summit_sharpness: 0, summit_height: 1.0, mass_width: 1.0, baseline_height: 1.0,
+  facet_shading: 0.6, ring_shading: true,
+  ambient_count: 3, ambient_size: 0.3, ambient_width: 1.0, ambient_lifetime: 25,
+  divergence_threshold: 0.15, _monitoring_on: false, monitoring_threshold: 0.1, transition_tau: 0.6,
+  font_family: '', font_size: 13, height: '',
+  ring_scale: Number(q.get('ring') || 0.6), resolution_scale: Number(q.get('rs') || 0.65), fps_idle: 24, fps_active: 45,
+  hold_time: 500,
+  // Demo actions: the test page has no Home Assistant, so it only logs the 'hass-action' events
+  center_tap_action: { action: 'fire-dom-event', browser_mod: { service: 'browser_mod.popup', data: { title: 'Rehoboam' } } },
+  center_hold_action: { action: 'more-info' },
+  center_entity: 'sensor.pm25',
+  ...urlCfg,
+};
+if (one !== null) {
+  const p = PRESETS[Number(one)] || PRESETS[0];
+  state.theme_mode = p.theme_mode;
+  // Presets pin the eclipse (0 or 1); untick the override to see the live eclipse from the sensors
+  state._eclipse_override = true; state.test_divergence = p.test_divergence;
+}
+if ('test_divergence' in urlCfg) state._eclipse_override = true;
+if ('eclipse_angle' in urlCfg) state._eclipse_follow = false;
+if ('monitoring_threshold' in urlCfg) state._monitoring_on = true;
+
+function cardConfig(i) {
+  const c = {};
+  for (const [k, val] of Object.entries(state)) if (!k.startsWith('_')) c[k] = val;
+  c.entities = ENTS.map(e => {
+    const out = { entity: e.entity, name: e.name, category: e.category, baseline: e.baseline, critical: e.critical, angle: e.angle, unit: e.unit, always_visible: e.always_visible };
+    if (e.own) { out.monitoring_threshold = e.monitoring_threshold; out.divergence_threshold = e.divergence_threshold; }
+    return out;
+  });
+  if (state._eclipse_follow) delete c.eclipse_angle;
+  if (!state._eclipse_override) delete c.test_divergence;
+  if (!state._monitoring_on) delete c.monitoring_threshold;
+  if (!c.font_family) delete c.font_family;
+  if (grid) Object.assign(c, PRESETS[i]);
+  c.height = grid ? '353px' : (c.height || '100vh');
+  return c;
+}
+function hassStates() {
+  const states = {};
+  ENTS.forEach(e => {
+    const val = e.baseline + e.div * (e.critical - e.baseline);
+    states[e.entity] = { state: val.toFixed(1), attributes: { unit_of_measurement: e.unit, friendly_name: e.name } };
+  });
+  return { states, themes: { darkMode: state._ha_dark } };
+}
+
+let pending = false;
+function apply() {
+  if (pending) return;
+  pending = true;
+  requestAnimationFrame(() => {
+    pending = false;
+    cards.forEach((c, i) => { if (c) { c.setConfig(cardConfig(i)); c.hass = hassStates(); } });
+  });
+}
+function pushStates() { cards.forEach(c => c && (c.hass = hassStates())); }
+
+// ---- panel helpers (each takes an optional parent element and target object) ----
+const panel = document.getElementById('panel');
+function h(t) { const e = document.createElement('h3'); e.textContent = t; panel.appendChild(e); }
+function slider(label, key, min, max, step, { obj = state, onChange = apply, parent = panel } = {}) {
+  const row = document.createElement('div'); row.className = 'row';
+  row.innerHTML = `<label>${label}</label><input type="range" min="${min}" max="${max}" step="${step}"><output></output>`;
+  const inp = row.querySelector('input'), out = row.querySelector('output');
+  const show = () => { out.textContent = (+obj[key]).toFixed(step < 1 ? 2 : 0); };
+  inp.value = obj[key]; show();
+  inp.oninput = () => { obj[key] = Number(inp.value); show(); onChange(); };
+  row.sync = () => { inp.value = obj[key]; show(); };
+  parent.appendChild(row);
+  return row;
+}
+function check(label, key, { obj = state, onChange = apply, parent = panel } = {}) {
+  const row = document.createElement('label'); row.className = 'check';
+  row.innerHTML = `<input type="checkbox"> ${label}`;
+  const inp = row.querySelector('input'); inp.checked = !!obj[key];
+  inp.onchange = () => { obj[key] = inp.checked; onChange(); };
+  parent.appendChild(row);
+}
+function text(label, key, placeholder, { obj = state, parent = panel } = {}) {
+  const row = document.createElement('div'); row.className = 'row';
+  row.innerHTML = `<label>${label}</label><input type="text" placeholder="${placeholder}">`;
+  const inp = row.querySelector('input'); inp.value = obj[key] || '';
+  inp.onchange = () => { obj[key] = inp.value.trim(); apply(); };
+  parent.appendChild(row);
+}
+function seg(options, key) {
+  const row = document.createElement('div'); row.className = 'seg';
+  options.forEach(([val, label]) => {
+    const b = document.createElement('button'); b.textContent = label;
+    b.className = state[key] === val ? 'on' : '';
+    b.onclick = () => { state[key] = val; row.querySelectorAll('button').forEach(x => x.className = ''); b.className = 'on'; apply(); };
+    row.appendChild(b);
+  });
+  panel.appendChild(row);
+}
+
+// ---- panel ----
+h(grid ? 'Theme and eclipse (grid: per cell)' : 'Theme and eclipse');
+if (!grid) {
+  seg([['dark', 'Dark'], ['light', 'Light'], ['auto', 'Auto']], 'theme_mode');
+  check('HA dark mode (used by Auto)', '_ha_dark');
+  check('Eclipse override (test_divergence)', '_eclipse_override');
+  slider('Eclipse amount (test_divergence)', 'test_divergence', 0, 1, 0.01);
+}
+check('Eclipse follows divergence (untick for a fixed angle)', '_eclipse_follow');
+slider('Eclipse angle (fixed)', 'eclipse_angle', 0, 360, 1);
+slider('Eclipse intensity', 'eclipse_intensity', 0, 2, 0.05);
+slider('Corona rays', 'ray_intensity', 0, 1, 0.05);
+
+h('Waves and masses');
+slider('Wave amplitude scale', 'amplitude_scale', 0.4, 2, 0.05);
+slider('Main lump width', 'summit_width', 0.4, 3, 0.05);
+slider('Main lump spikiness', 'summit_sharpness', 0, 1, 0.05);
+slider('Main lump prominence', 'summit_height', 0.3, 1.43, 0.01);
+slider('Lump mass width', 'mass_width', 0.3, 2.5, 0.05);
+slider('Baseline wave height', 'baseline_height', 0, 5, 0.1);
+slider('Spike 3D shading', 'facet_shading', 0, 1, 0.05);
+check('Wobbling ring shading', 'ring_shading');
+
+h('Ambient masses');
+slider('Count', 'ambient_count', 0, 12, 1);
+slider('Size', 'ambient_size', 0, 1, 0.01);
+slider('Width', 'ambient_width', 0.3, 2.5, 0.05);
+slider('Lifetime (s)', 'ambient_lifetime', 4, 300, 1);
+
+h('Callouts');
+slider('Global divergence threshold (0-1)', 'divergence_threshold', 0, 1, 0.01);
+check('Global monitoring threshold on', '_monitoring_on');
+slider('Global monitoring threshold (0-1)', 'monitoring_threshold', 0, 1, 0.01);
+slider('Transition tau (s)', 'transition_tau', 0.2, 10, 0.1);
+text('Label font (CSS font-family, empty = Barlow Condensed)', 'font_family', "'Roboto Condensed', sans-serif");
+slider('Label font size (px)', 'font_size', 8, 32, 0.5);
+slider('Hold duration (ms)', 'hold_time', 150, 5000, 50);
+
+h('Entities');
+const divRows = [];
+ENTS.forEach(e => {
+  const box = document.createElement('details');
+  box.innerHTML = `<summary>${e.category} (${e.entity})</summary>`;
+  panel.appendChild(box);
+  divRows.push(slider(`Divergence (live value)`, 'div', 0, 1, 0.01, { obj: e, onChange: pushStates, parent: box }));
+  slider('Angle (°)', 'angle', 0, 360, 1, { obj: e, parent: box });
+  check('Always visible callout', 'always_visible', { obj: e, parent: box });
+  check('Own thresholds (else the global ones)', 'own', { obj: e, parent: box });
+  const lo = Math.min(e.baseline, e.critical), hi = Math.max(e.baseline, e.critical);
+  const step = (hi - lo) / 100;
+  slider(`Monitoring threshold (${e.unit})`, 'monitoring_threshold', lo, hi, step, { obj: e, parent: box });
+  slider(`Divergence threshold (${e.unit})`, 'divergence_threshold', lo, hi, step, { obj: e, parent: box });
+});
+const rowB = document.createElement('div'); rowB.className = 'seg';
+[['All 0', () => ENTS.forEach(e => e.div = 0)], ['All 1', () => ENTS.forEach(e => e.div = 1)], ['Random', () => ENTS.forEach(e => e.div = Math.random())]].forEach(([t, fn]) => {
+  const b = document.createElement('button'); b.className = 'btn'; b.textContent = t;
+  b.onclick = () => { fn(); divRows.forEach(r => r.sync()); pushStates(); };
+  rowB.appendChild(b);
+});
+panel.appendChild(rowB);
+
+h('Layout and performance');
+text('Card height (CSS, empty = full window)', 'height', '500px');
+slider('Ring scale', 'ring_scale', 0.25, 1, 0.01);
+slider('Resolution scale', 'resolution_scale', 0.35, 1, 0.05);
+slider('Idle FPS', 'fps_idle', 10, 60, 1);
+slider('Active FPS', 'fps_active', 15, 60, 1);
+
+const stats = document.createElement('div'); stats.className = 'stats'; panel.appendChild(stats);
+const cfgOut = document.createElement('button'); cfgOut.className = 'btn'; cfgOut.style.marginTop = '8px'; cfgOut.style.width = '100%';
+cfgOut.textContent = 'Copy config as YAML';
+cfgOut.onclick = () => {
+  const c = cardConfig(0); delete c.entities; if (!state.height) delete c.height;
+  const yaml = 'type: custom:lovelace-rehoboam\n' + Object.entries(c).filter(([, val]) => val !== null && val !== undefined).map(([k, val]) => `${k}: ${typeof val === 'object' ? JSON.stringify(val) : val}`).join('\n');
+  navigator.clipboard && navigator.clipboard.writeText(yaml);
+  cfgOut.textContent = 'Copied';
+  setTimeout(() => cfgOut.textContent = 'Copy config as YAML', 1200);
+};
+panel.appendChild(cfgOut);
+
+// ---- cards ----
+document.getElementById('cells').className = grid ? 'grid' : 'single';
+if (!grid) document.getElementById('c' + one).classList.add('sel');
+window.cards = [];
+const s = document.createElement('script'); s.src = v + '.js?' + Date.now();
+s.onload = () => {
+  window.cards = PRESETS.map((_, i) => {
+    if (!grid && String(i) !== one) return null;
+    const el = document.createElement('lovelace-rehoboam');
+    el.setConfig(cardConfig(i));
+    document.getElementById('c' + i).appendChild(el);
+    el.hass = hassStates();
+    // Measure LUT build time and frame rate
+    const orig = el._updatePolarLUT.bind(el);
+    el._lutStats = { n: 0, ms: 0 };
+    el._updatePolarLUT = t => { const t0 = performance.now(); orig(t); el._lutStats.ms += performance.now() - t0; el._lutStats.n++; };
+    return el;
+  });
+  window.addEventListener('hass-action', e => {
+    const { config, action } = e.detail;
+    const a = config[`${action}_action`] || {};
+    window.lastAction = `${action} -> ${a.action}${a.browser_mod ? ' ' + a.browser_mod.service : ''}${config.entity ? ' (' + config.entity + ')' : ''}`;
+    console.log('hass-action', action, JSON.stringify(config));
+  });
+  setInterval(() => {
+    const c = cards.find(Boolean); if (!c) return;
+    const st = c._lutStats;
+    stats.textContent = `frames/s: ${st.n}  LUT: ${(st.ms / Math.max(1, st.n)).toFixed(3)} ms\ncanvas: ${c._canvas.width}x${c._canvas.height}  v${typeof CARD_VERSION !== 'undefined' ? CARD_VERSION : '?'}\nlast action: ${window.lastAction || '(tap the centre or a callout)'}`;
+    st.n = 0; st.ms = 0;
+  }, 1000);
+};
+document.head.appendChild(s);
+</script></body></html>
