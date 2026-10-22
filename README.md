@@ -19,6 +19,8 @@
 
 Every entity you add gets its own place on the ring. While its value stays near its baseline, the ring is calm. When the value moves toward critical, strata build up into a peak, the eclipse turns toward it, and a callout draws out to name it. Small ambient strata rise and fall in the calm parts, so the ring never looks frozen.
 
+This card is a fan project. See [Credits](#credits) for the work that inspired it.
+
 ## Highlights
 
 <table>
@@ -341,6 +343,15 @@ python3 -m http.server 8766 --bind 127.0.0.1
 Then open `http://127.0.0.1:8766/harness.html`. URL options for testing: `grid=1` shows the 4 theme and eclipse presets side by side, `one=0` to `one=3` shows one preset, and `panel=0` hides the settings panel.
 
 The README images come from the playground. With the server running, `node scripts/screenshots.mjs <tmp dir>` captures them with headless Chromium, and `python3 scripts/build-images.py <tmp dir> images` turns them into `images/hero.webp` and the PNGs (needs Pillow).
+
+---
+
+## Credits
+
+- **Westworld**, the HBO series created by Jonathan Nolan and Lisa Joy. Rehoboam, its divergence ring and its look come from the show. This project is not affiliated with or endorsed by HBO or the creators of Westworld.
+- **Emil Besirevic**, whose Rehoboam builds inspired this card:
+  - [thebosniandiycorner](https://www.youtube.com/@thebosniandiycorner4632) on YouTube, in particular [Rehoboam (3d print and dashboard)](https://www.youtube.com/watch?v=L245YQNlLZg)
+  - [Emil Besirevic](https://www.artstation.com/ebes) on ArtStation, in particular [his Rehoboam artwork](https://www.artstation.com/artwork/188PBG)
 
 ---
 
