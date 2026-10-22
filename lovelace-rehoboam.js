@@ -396,56 +396,126 @@ function roundToStep(value, step) {
   return Number(value.toFixed(Math.min(decimals, 10)));
 }
 
-// Tooltip text for each setting, shared by the editor and the test page
-const SETTING_TIPS = {
-  theme_mode: 'Dark shows a night eclipse, light shows ink on paper. Auto follows the dark mode setting of Home Assistant.',
-  font_family: 'CSS font family of the callout labels. The default Barlow Condensed loads from Google Fonts. Set a local font to keep the card offline.',
-  font_size: 'Size of the callout label text in px. The leader lines and label spacing scale with it.',
-  height: 'Card height in CSS units, for example 500px, or 100vh for a full-screen panel view.',
-  eclipse_angle: 'Direction of the eclipse glow in degrees (0 = right, counter-clockwise). Leave empty to turn the glow toward the entity with the most divergence.',
-  eclipse_intensity: 'Brightness of the eclipse crescent and its corona.',
-  ray_intensity: 'Strength of the thin rays that shimmer outward from the ring.',
-  facet_shading: 'Strength of the fold shadows that make the strata look 3D.',
-  ring_shading: 'Concentric shading rings that wobble inward and outward across the strata.',
-  amplitude_scale: 'Height multiplier for all waves and strata.',
-  peak_width: 'Width of the peak that rises above a diverging entity.',
-  peak_sharpness: 'Shape of the peak: 0 is a flat-topped dome, 1 is a pointed tip.',
-  peak_height: 'How far the peak stands out above the strata below it.',
-  strata_width: 'Width of the strata below each peak.',
-  baseline_height: 'Height of the thin band of waves around the full ring. 0 gives a flat ring.',
-  ambient_count: 'Maximum number of small ambient strata that rise and fall at random places in the calm parts of the ring. 0 turns them off.',
-  ambient_size: 'Maximum height of one ambient stratum.',
-  ambient_width: 'Width of one ambient stratum.',
-  ambient_lifetime: 'Seconds one ambient stratum takes to rise and fall again.',
-  transition_tau: 'Time constant in seconds of the smooth change when a value changes. Higher values give slower, calmer motion.',
-  monitoring_threshold: 'Fraction (0-1) of the way from baseline to critical where a callout appears as MONITORING. Leave empty for no monitoring state.',
-  divergence_threshold: 'Fraction (0-1) of the way from baseline to critical where a callout changes to DIVERGENCE.',
-  test_divergence: 'Preview only: forces the eclipse glow to this divergence. Leave empty to use the live values.',
-  ring_scale: 'Ring radius relative to the card size.',
-  resolution_scale: 'Render resolution relative to the screen. Lower values save GPU time on slow tablets.',
-  fps_idle: 'Frame rate while all entities are calm.',
-  fps_active: 'Frame rate while an entity diverges or a value changes.',
-  center_entity: 'Entity that the centre actions use, for example for more-info or toggle.',
-  hold_time: 'Milliseconds a press must last to count as a hold. Applies to the centre and to the callouts.',
-  center_tap_action: 'Action when you tap the centre of the ring. For a browser_mod popup use fire-dom-event with a browser_mod block in YAML.',
-  center_hold_action: 'Action when you press and hold the centre of the ring.',
-  entity: 'Home Assistant entity that drives this callout.',
-  name: 'Label text on the callout. Empty uses the friendly name of the entity.',
-  category: 'Header text above the label, for example THERMAL VARIANCE.',
-  baseline: 'Value at which the entity is calm (divergence 0).',
-  critical: 'Value at which the entity is fully diverged (divergence 1). If it is below the baseline, lower values diverge.',
-  angle: 'Position of the callout on the ring in degrees (0 = right, counter-clockwise). Leave empty to space the callouts evenly.',
-  ent_monitoring_threshold: 'Sensor value where this callout appears as MONITORING. Leave empty to use the card setting.',
-  ent_divergence_threshold: 'Sensor value where this callout changes to DIVERGENCE. Leave empty to use the card setting.',
-  unit: 'Unit shown after the value. Empty uses the unit of the entity.',
-  always_visible: 'Show the callout as MONITORING also when it would be hidden.',
-  tap_action: 'Action when you tap this callout. The default opens more-info.',
-  hold_action: 'Action when you press and hold this callout.'
-};
+// One list of settings, read by the card (defaults and limits), the visual editor, the playground
+// page and the README generator (scripts/readme-options.mjs). Types: number (slider and number
+// box), select, text, bool, entity, action. An empty nullable number means "not set"; its slider
+// then rests at unsetAt (a number, or a function of the config).
+const SETTING_SECTIONS = [
+  { id: 'theme', title: 'Theme and eclipse' },
+  { id: 'waves', title: 'Waves and strata' },
+  { id: 'ambient', title: 'Ambient strata' },
+  { id: 'callouts', title: 'Callouts' },
+  { id: 'centre', title: 'Ring centre', hint: 'Tap or hold the centre of the ring. For a browser_mod popup use the action "fire-dom-event" with a browser_mod block in YAML.' },
+  { id: 'layout', title: 'Layout and performance' }
+];
+const CARD_SETTINGS = [
+  { key: 'theme_mode', section: 'theme', type: 'select', label: 'Theme', default: 'dark',
+    options: [['dark', 'Dark'], ['light', 'Light'], ['auto', 'Auto']],
+    tip: 'Dark shows a night eclipse, light shows ink on paper. Auto follows the dark mode setting of Home Assistant.' },
+  { key: 'eclipse_angle', section: 'theme', type: 'number', label: 'Eclipse angle (°, empty = follow)', min: 0, max: 360, step: 1,
+    nullable: true, unsetAt: 180, placeholder: 'Follow', yamlType: 'number or auto', defaultText: 'auto',
+    tip: 'Direction of the eclipse glow in degrees (0 = right, counter-clockwise). Leave empty to turn the glow toward the entity with the most divergence.' },
+  { key: 'eclipse_intensity', section: 'theme', type: 'number', label: 'Eclipse intensity', min: 0, max: 2, step: 0.05, default: 1,
+    tip: 'Brightness of the eclipse crescent and its corona.' },
+  { key: 'ray_intensity', section: 'theme', type: 'number', label: 'Corona rays', min: 0, max: 1, step: 0.05, default: 0.35,
+    tip: 'Strength of the thin rays that shimmer outward from the ring.' },
+  { key: 'test_divergence', section: 'theme', type: 'number', label: 'Test divergence (empty = live)', min: 0, max: 1, step: 0.01,
+    nullable: true, unsetAt: 0, placeholder: 'Live', defaultText: 'none',
+    tip: 'Preview only: forces the eclipse glow to this divergence. Leave empty to use the live values.' },
+
+  { key: 'amplitude_scale', section: 'waves', type: 'number', label: 'Wave amplitude scale', min: 0.1, max: 3, step: 0.05, default: 1.25,
+    tip: 'Height multiplier for all waves and strata.' },
+  { key: 'peak_width', section: 'waves', type: 'number', label: 'Peak width', min: 0.4, max: 3, step: 0.05, default: 1,
+    tip: 'Width of the peak that rises above a diverging entity.' },
+  { key: 'peak_sharpness', section: 'waves', type: 'number', label: 'Peak sharpness (0 = dome, 1 = point)', min: 0, max: 1, step: 0.05, default: 0,
+    tip: 'Shape of the peak: 0 is a flat-topped dome, 1 is a pointed tip.' },
+  { key: 'peak_height', section: 'waves', type: 'number', label: 'Peak prominence', min: 0.3, max: 1.43, step: 0.01, default: 1,
+    tip: 'How far the peak stands out above the strata below it.' },
+  { key: 'strata_width', section: 'waves', type: 'number', label: 'Strata width', min: 0.3, max: 2.5, step: 0.05, default: 1,
+    tip: 'Width of the strata below each peak.' },
+  { key: 'baseline_height', section: 'waves', type: 'number', label: 'Baseline wave height (0 = flat ring)', min: 0, max: 5, step: 0.1, default: 1,
+    tip: 'Height of the thin band of waves around the full ring. 0 gives a flat ring.' },
+  { key: 'facet_shading', section: 'waves', type: 'number', label: 'Fold shading', min: 0, max: 1, step: 0.05, default: 0.6,
+    tip: 'Strength of the fold shadows that make the strata look 3D.' },
+  { key: 'ring_shading', section: 'waves', type: 'bool', label: 'Wobbling ring shading', default: true,
+    tip: 'Concentric shading rings that wobble inward and outward across the strata.' },
+
+  { key: 'ambient_count', section: 'ambient', type: 'number', label: 'Ambient strata count', min: 0, max: 12, step: 1, default: 3,
+    tip: 'Maximum number of small ambient strata that rise and fall at random places in the calm parts of the ring. 0 turns them off.' },
+  { key: 'ambient_size', section: 'ambient', type: 'number', label: 'Ambient stratum size', min: 0, max: 1, step: 0.01, default: 0.3,
+    tip: 'Maximum height of one ambient stratum.' },
+  { key: 'ambient_width', section: 'ambient', type: 'number', label: 'Ambient stratum width', min: 0.3, max: 2.5, step: 0.05, default: 1,
+    tip: 'Width of one ambient stratum.' },
+  { key: 'ambient_lifetime', section: 'ambient', type: 'number', label: 'Ambient stratum lifetime (s)', min: 4, max: 300, step: 1, default: 25,
+    tip: 'Seconds one ambient stratum takes to rise and fall again.' },
+
+  { key: 'divergence_threshold', section: 'callouts', type: 'number', label: 'Divergence threshold (0–1)', min: 0, max: 1, step: 0.01, default: 0.15,
+    tip: 'Fraction (0-1) of the way from baseline to critical where a callout changes to DIVERGENCE.' },
+  { key: 'monitoring_threshold', section: 'callouts', type: 'number', label: 'Monitoring threshold (0–1, empty = none)', min: 0, max: 1, step: 0.01,
+    nullable: true, unsetAt: c => c.divergence_threshold ?? 0.15, placeholder: 'None', defaultText: 'none',
+    tip: 'Fraction (0-1) of the way from baseline to critical where a callout appears as MONITORING. Leave empty for no monitoring state.' },
+  { key: 'transition_tau', section: 'callouts', type: 'number', label: 'Transition smoothing (s)', min: 0.2, max: 20, step: 0.1, default: 2.2,
+    tip: 'Time constant in seconds of the smooth change when a value changes. Higher values give slower, calmer motion.' },
+  { key: 'font_family', section: 'callouts', type: 'text', label: 'Label font (CSS font-family)', placeholder: 'Barlow Condensed (default)', defaultText: 'Barlow Condensed',
+    tip: 'CSS font family of the callout labels. The default Barlow Condensed loads from Google Fonts. Set a local font to keep the card offline.' },
+  { key: 'font_size', section: 'callouts', type: 'number', label: 'Label font size (px)', min: 8, max: 32, step: 0.5, default: DEFAULT_FONT_SIZE,
+    tip: 'Size of the callout label text in px. The leader lines and label spacing scale with it.' },
+  { key: 'hold_time', section: 'callouts', type: 'number', label: 'Hold duration (ms)', min: 150, max: 5000, step: 50, default: DEFAULT_HOLD_MS,
+    tip: 'Milliseconds a press must last to count as a hold. Applies to the centre and to the callouts.' },
+
+  { key: 'center_entity', section: 'centre', type: 'entity', label: 'Centre entity', placeholder: 'sensor.anything', defaultText: 'none',
+    tip: 'Entity that the centre actions use, for example for more-info or toggle.' },
+  { key: 'center_tap_action', section: 'centre', type: 'action', label: 'Centre tap action', defaultText: 'none',
+    tip: 'Action when you tap the centre of the ring. For a browser_mod popup use fire-dom-event with a browser_mod block in YAML.' },
+  { key: 'center_hold_action', section: 'centre', type: 'action', label: 'Centre hold action', defaultText: 'none',
+    tip: 'Action when you press and hold the centre of the ring.' },
+
+  { key: 'height', section: 'layout', type: 'text', label: 'Card height (CSS)', default: DEFAULT_HEIGHT, placeholder: '500px, 60vh, ...',
+    tip: 'Card height in CSS units, for example 500px, or 100vh for a full-screen panel view.' },
+  { key: 'ring_scale', section: 'layout', type: 'number', label: 'Ring scale', min: 0.2, max: 0.9, step: 0.01, default: 0.42,
+    tip: 'Ring radius relative to the card size.' },
+  { key: 'resolution_scale', section: 'layout', type: 'number', label: 'Resolution scale', min: 0.25, max: 1, step: 0.05, default: 0.65,
+    tip: 'Render resolution relative to the screen. Lower values save GPU time on slow tablets.' },
+  { key: 'fps_idle', section: 'layout', type: 'number', label: 'Idle FPS', min: 5, max: 60, step: 1, default: 24,
+    tip: 'Frame rate while all entities are calm.' },
+  { key: 'fps_active', section: 'layout', type: 'number', label: 'Active FPS', min: 10, max: 120, step: 1, default: 45,
+    tip: 'Frame rate while an entity diverges or a value changes.' }
+];
+// Entity settings, in editor order. 'plain' is a number box without a slider (no fixed range);
+// 'threshold' is a slider that spans baseline to critical; 'map' is set in YAML only.
+const ENTITY_SETTINGS = [
+  { key: 'entity', type: 'entity', label: 'Entity ID', required: true, placeholder: 'sensor.living_room_temperature',
+    tip: 'Home Assistant entity that drives this callout.' },
+  { key: 'name', type: 'text', label: 'Name', placeholder: 'Friendly name of the entity', defaultText: 'Friendly name',
+    tip: 'Label text on the callout. Empty uses the friendly name of the entity.' },
+  { key: 'category', type: 'text', label: 'Category', default: 'SYSTEM ANOMALY', placeholder: 'SYSTEM ANOMALY',
+    tip: 'Header text above the label, for example THERMAL VARIANCE.' },
+  { key: 'baseline', type: 'plain', label: 'Baseline (divergence 0)', default: 0,
+    tip: 'Value at which the entity is calm (divergence 0).' },
+  { key: 'critical', type: 'plain', label: 'Critical (divergence 1)', default: 100,
+    tip: 'Value at which the entity is fully diverged (divergence 1). If it is below the baseline, lower values diverge.' },
+  { key: 'unit', type: 'text', label: 'Unit', placeholder: 'Unit of the entity', defaultText: 'Entity unit',
+    tip: 'Unit shown after the value. Empty uses the unit of the entity.' },
+  { key: 'angle', type: 'number', label: 'Angle (°, empty = auto)', min: 0, max: 360, step: 1, nullable: true, placeholder: 'Auto', defaultText: 'auto-spaced',
+    tip: 'Position of the callout on the ring in degrees (0 = right, counter-clockwise). Leave empty to space the callouts evenly.' },
+  { key: 'monitoring_threshold', type: 'threshold', label: 'Monitoring threshold (sensor value)', nullable: true, placeholder: 'Card setting', defaultText: 'card setting',
+    tip: 'Sensor value where this callout appears as MONITORING. Leave empty to use the card setting.' },
+  { key: 'divergence_threshold', type: 'threshold', label: 'Divergence threshold (sensor value)', nullable: true, placeholder: 'Card setting', defaultText: 'card setting',
+    tip: 'Sensor value where this callout changes to DIVERGENCE. Leave empty to use the card setting.' },
+  { key: 'always_visible', type: 'bool', label: 'Always visible callout', default: false,
+    tip: 'Show the callout as MONITORING also when it would be hidden.' },
+  { key: 'state_map', type: 'map', label: 'State map', yamlOnly: true, defaultText: 'none',
+    tip: 'YAML only: map of raw states to divergence values (0-1), for example "on": 1 and "off": 0. Use it for entities without a numeric state.' },
+  { key: 'tap_action', type: 'action', label: 'Tap action', defaultText: 'more-info',
+    tip: 'Action when you tap this callout. The default opens more-info.' },
+  { key: 'hold_action', type: 'action', label: 'Hold action', defaultText: 'none',
+    tip: 'Action when you press and hold this callout.' }
+];
+const SETTING = Object.fromEntries(CARD_SETTINGS.map(st => [st.key, st]));
+const settingUnsetAt = (st, config) => (typeof st.unsetAt === 'function' ? st.unsetAt(config) : st.unsetAt ?? st.default ?? st.min);
 
 // Info icon for a setting label; the tooltip opens on hover and on tap (focus)
-function tipIcon(key) {
-  const text = SETTING_TIPS[key];
+function tipIcon(text) {
   return text ? `<span class="tip" tabindex="0" role="note" aria-label="${esc(text)}" data-tip="${esc(text)}">i</span>` : '';
 }
 
@@ -453,8 +523,8 @@ function tipIcon(key) {
 // VISUAL LOVELACE CONFIG EDITOR (<lovelace-rehoboam-editor>)
 // ============================================================================
 class RehoboamCardEditor extends HTMLElement {
-  static get settingTips() {
-    return SETTING_TIPS;
+  static get settings() {
+    return { sections: SETTING_SECTIONS, card: CARD_SETTINGS, entity: ENTITY_SETTINGS };
   }
 
   constructor() {
@@ -496,28 +566,7 @@ class RehoboamCardEditor extends HTMLElement {
     if (this._rendered && incoming === this._lastEmitted) return;
 
     this._config = {
-      theme_mode: 'dark',
-      height: DEFAULT_HEIGHT,
-      eclipse_intensity: 1.0,
-      ray_intensity: 0.35,
-      facet_shading: 0.6,
-      ring_shading: true,
-      amplitude_scale: 1.25,
-      strata_width: 1.0,
-      ambient_count: 3,
-      ambient_size: 0.3,
-      ambient_width: 1.0,
-      ambient_lifetime: 25,
-      peak_width: 1.0,
-      peak_sharpness: 0,
-      peak_height: 1.0,
-      baseline_height: 1.0,
-      transition_tau: 2.2,
-      ring_scale: 0.42,
-      resolution_scale: 0.65,
-      fps_idle: 24,
-      fps_active: 45,
-      divergence_threshold: 0.15,
+      ...Object.fromEntries(CARD_SETTINGS.filter(st => st.default !== undefined).map(st => [st.key, st.default])),
       ...config,
       entities: Array.isArray(config.entities)
         ? config.entities.map(e => (typeof e === 'string' ? { entity: e } : { ...e }))
@@ -595,10 +644,7 @@ class RehoboamCardEditor extends HTMLElement {
       ...this._config.entities,
       {
         entity: '',
-        category: 'SYSTEM ANOMALY',
-        baseline: 0,
-        critical: 100,
-        always_visible: false
+        ...Object.fromEntries(ENTITY_SETTINGS.filter(st => st.default !== undefined).map(st => [st.key, st.default]))
       }
     ];
     // A new entity opens expanded, so it can be filled in at once
@@ -617,7 +663,7 @@ class RehoboamCardEditor extends HTMLElement {
 
   // A slider next to a number box. Both show one value; an empty number box means "not set"
   // (the card default), and the slider then rests dimmed at unsetAt.
-  _rangeField(label, key, min, max, step, { value, placeholder = '', unsetAt = min, idx = null, cls = '', tip = key } = {}) {
+  _rangeField(label, key, min, max, step, { value, placeholder = '', unsetAt = min, idx = null, cls = '', tip = SETTING[key] && SETTING[key].tip } = {}) {
     const raw = idx === null ? this._config[key] : value;
     const isSet = raw !== undefined && raw !== null && raw !== '' && Number.isFinite(Number(raw));
     const scope = idx === null ? 'global' : 'entity';
@@ -702,14 +748,85 @@ class RehoboamCardEditor extends HTMLElement {
     });
   }
 
+  _settingField(st, hasEntityPicker) {
+    const c = this._config;
+    const value = c[st.key];
+    const label = `<label>${esc(st.label)}${tipIcon(st.tip)}</label>`;
+    switch (st.type) {
+      case 'number':
+        return this._rangeField(esc(st.label), st.key, st.min, st.max, st.step, {
+          placeholder: st.placeholder ?? (st.default !== undefined ? String(st.default) : ''),
+          unsetAt: settingUnsetAt(st, c),
+          tip: st.tip
+        });
+      case 'select':
+        return `<div class="field">${label}
+          <select class="set-input" data-key="${st.key}">
+            ${st.options.map(([val, name]) => `<option value="${esc(val)}" ${value === val ? 'selected' : ''}>${esc(name)}</option>`).join('')}
+          </select></div>`;
+      case 'text':
+        return `<div class="field">${label}
+          <input class="set-input" data-key="${st.key}" type="text" value="${esc(value)}" placeholder="${esc(st.placeholder || '')}" /></div>`;
+      case 'bool':
+        return `<div class="checkbox-row">
+          <input class="set-check" id="f-${st.key}" data-key="${st.key}" type="checkbox" ${value !== false && (value || st.default) ? 'checked' : ''} />
+          <label for="f-${st.key}">${esc(st.label)}</label>${tipIcon(st.tip)}</div>`;
+      case 'entity':
+        return `<div class="field" style="grid-column: span 2;">${label}
+          ${hasEntityPicker
+            ? `<ha-entity-picker id="f-${st.key}" value="${esc(value)}" allow-custom-entity></ha-entity-picker>`
+            : `<input id="f-${st.key}" type="text" value="${esc(value)}" placeholder="${esc(st.placeholder || '')}" />`}</div>`;
+      case 'action':
+        return this._actionField(esc(st.label), 'global', st.key, '', st.tip);
+      default:
+        return '';
+    }
+  }
+
+  _entityField(st, ent, idx, tb, hasEntityPicker) {
+    const value = ent[st.key];
+    const label = `<label>${esc(st.label)}${tipIcon(st.tip)}</label>`;
+    const data = `data-idx="${idx}" data-key="${st.key}"`;
+    switch (st.type) {
+      case 'entity':
+        return `<div class="field" style="grid-column: span 2;">${label}
+          ${hasEntityPicker
+            ? `<ha-entity-picker class="ent-picker" data-idx="${idx}" value="${esc(value)}" allow-custom-entity></ha-entity-picker>`
+            : `<input class="ent-input" ${data} data-type="string" type="text" value="${esc(value)}" placeholder="${esc(st.placeholder || '')}" />`}</div>`;
+      case 'text':
+        return `<div class="field">${label}
+          <input class="ent-input" ${data} data-type="string" type="text" value="${esc(value)}" placeholder="${esc(st.placeholder || '')}" /></div>`;
+      case 'plain':
+        return `<div class="field">${label}
+          <input class="ent-input" ${data} data-type="number" type="number" step="any" value="${esc(value ?? st.default)}" /></div>`;
+      case 'number':
+        return this._rangeField(esc(st.label), st.key, st.min, st.max, st.step, {
+          idx, value, placeholder: st.placeholder, unsetAt: st.key === 'angle' ? this._autoAngle(idx) : st.min, tip: st.tip
+        });
+      case 'threshold':
+        return this._rangeField(esc(st.label), st.key, tb.lo, tb.hi, tb.step, {
+          idx, value, placeholder: st.placeholder, cls: 'ent-threshold', tip: st.tip,
+          unsetAt: st.key === 'divergence_threshold' ? tb.divAt : tb.monAt
+        });
+      case 'bool':
+        return `<div class="checkbox-row">
+          <input class="ent-check" id="chk-${idx}-${st.key}" ${data} type="checkbox" ${value ? 'checked' : ''} />
+          <label for="chk-${idx}-${st.key}">${esc(st.label)}</label>${tipIcon(st.tip)}</div>`;
+      case 'action':
+        return this._actionField(esc(st.label), 'entity', st.key, idx, st.tip);
+      default:
+        return '';
+    }
+  }
+
   // ha-selector with { ui_action: {} } is Home Assistant's own action picker
-  _actionField(label, scope, key, idx = '') {
+  _actionField(label, scope, key, idx = '', tip = '') {
     if (!customElements.get('ha-selector')) {
-      return `<div class="field" style="grid-column: span 2;"><label>${label}${tipIcon(key)}</label>
+      return `<div class="field" style="grid-column: span 2;"><label>${label}${tipIcon(tip)}</label>
         <div class="hint">Set <code>${key}</code> in the YAML editor.</div></div>`;
     }
     return `<div class="field" style="grid-column: span 2;">
-      <label>${label}${tipIcon(key)}</label>
+      <label>${label}${tipIcon(tip)}</label>
       <ha-selector class="act-sel" data-scope="${scope}" data-key="${key}" data-idx="${idx}"></ha-selector>
     </div>`;
   }
@@ -911,88 +1028,21 @@ class RehoboamCardEditor extends HTMLElement {
         }
       </style>
 
+      ${SETTING_SECTIONS.map(sec => `
       <div class="section">
-        <div class="section-title">Appearance &amp; Eclipse Bloom</div>
+        <div class="section-title">${sec.title}</div>
+        ${sec.hint ? `<div class="hint">${esc(sec.hint)}</div>` : ''}
         <div class="grid">
-          <div class="field">
-            <label>Theme Mode${tipIcon('theme_mode')}</label>
-            <select id="f-theme_mode">
-              <option value="dark" ${c.theme_mode === 'dark' ? 'selected' : ''}>Dark Mode (Night Eclipse)</option>
-              <option value="light" ${c.theme_mode === 'light' ? 'selected' : ''}>Light Mode (Day Eclipse)</option>
-              <option value="auto" ${c.theme_mode === 'auto' ? 'selected' : ''}>Auto (follow Home Assistant)</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Label Font (CSS font-family)${tipIcon('font_family')}</label>
-            <input id="f-font_family" type="text" value="${esc(c.font_family)}" placeholder="Barlow Condensed (default)" />
-          </div>
-          ${this._rangeField('Label Font Size (px)', 'font_size', 8, 32, 0.5, { placeholder: String(DEFAULT_FONT_SIZE), unsetAt: DEFAULT_FONT_SIZE })}
-          <div class="field">
-            <label>Card Height (CSS)${tipIcon('height')}</label>
-            <input id="f-height" type="text" value="${esc(c.height || DEFAULT_HEIGHT)}" placeholder="500px, 60vh, ..." />
-          </div>
-          ${this._rangeField('Eclipse Angle (°, empty = follow)', 'eclipse_angle', 0, 360, 1, { placeholder: 'Auto', unsetAt: 180 })}
-          ${this._rangeField('Eclipse Intensity', 'eclipse_intensity', 0, 2, 0.05)}
-          ${this._rangeField('Corona Rays / Beams', 'ray_intensity', 0, 1, 0.05)}
-          ${this._rangeField('Spike 3D Shading', 'facet_shading', 0, 1, 0.05)}
-          <div class="checkbox-row">
-            <input id="f-ring_shading" type="checkbox" ${c.ring_shading !== false ? 'checked' : ''} />
-            <label for="f-ring_shading">Wobbling Ring Shading</label>${tipIcon('ring_shading')}
-          </div>
-          ${this._rangeField('Wave Amplitude Scale', 'amplitude_scale', 0.4, 2, 0.05)}
-          ${this._rangeField('Peak Width', 'peak_width', 0.4, 3, 0.05)}
-          ${this._rangeField('Peak Sharpness (0 = dome, 1 = point)', 'peak_sharpness', 0, 1, 0.05)}
-          ${this._rangeField('Peak Prominence', 'peak_height', 0.3, 1.43, 0.01)}
-          ${this._rangeField('Strata Width', 'strata_width', 0.3, 2.5, 0.05)}
-          ${this._rangeField('Baseline Wave Height (0 = flat ring)', 'baseline_height', 0, 5, 0.1)}
-          ${this._rangeField('Ambient Strata (count)', 'ambient_count', 0, 12, 1)}
-          ${this._rangeField('Ambient Stratum Size', 'ambient_size', 0, 1, 0.05)}
-          ${this._rangeField('Ambient Stratum Width', 'ambient_width', 0.3, 2.5, 0.05)}
-          ${this._rangeField('Ambient Stratum Lifetime (s)', 'ambient_lifetime', 4, 300, 1)}
-          ${this._rangeField('Transition Smoothing Tau (s)', 'transition_tau', 0.2, 15, 0.1)}
-          ${this._rangeField('Global Monitoring Threshold (0–1)', 'monitoring_threshold', 0, 1, 0.01, { placeholder: 'No monitoring state', unsetAt: c.divergence_threshold ?? 0.15 })}
-          ${this._rangeField('Global Divergence Threshold (0–1)', 'divergence_threshold', 0, 1, 0.01, { placeholder: '0.15', unsetAt: 0.15 })}
-          ${this._rangeField('Test Divergence Override (optional)', 'test_divergence', 0, 1, 0.01, { placeholder: 'Live values', unsetAt: 0 })}
+          ${CARD_SETTINGS.filter(st => st.section === sec.id).map(st => this._settingField(st, hasEntityPicker)).join('')}
         </div>
-      </div>
-
-      <div class="section">
-        <div class="section-title">Performance &amp; Tablet Scaling</div>
-        <div class="grid">
-          ${this._rangeField('Ring Scale', 'ring_scale', 0.25, 0.65, 0.01)}
-          ${this._rangeField('Resolution Scale', 'resolution_scale', 0.35, 1, 0.05)}
-          ${this._rangeField('Idle FPS', 'fps_idle', 10, 60, 1)}
-          ${this._rangeField('Active FPS', 'fps_active', 15, 60, 1)}
-        </div>
-      </div>
-
-      <div class="section">
-        <div class="section-title">Circle Centre Actions</div>
-        <div class="hint">
-          Tap or hold the centre of the ring. For a browser_mod popup use the action
-          "fire-dom-event" with a <code>browser_mod</code> block in YAML.
-        </div>
-        <div class="grid">
-          <div class="field" style="grid-column: span 2;">
-            <label>Centre Entity (optional, for more-info / toggle)${tipIcon('center_entity')}</label>
-            ${
-              hasEntityPicker
-                ? `<ha-entity-picker id="f-center_entity" value="${esc(c.center_entity)}" allow-custom-entity></ha-entity-picker>`
-                : `<input id="f-center_entity" type="text" value="${esc(c.center_entity)}" placeholder="sensor.anything" />`
-            }
-          </div>
-          ${this._rangeField('Hold Duration (ms, centre and callouts)', 'hold_time', 150, 5000, 50, { placeholder: String(DEFAULT_HOLD_MS), unsetAt: DEFAULT_HOLD_MS })}
-          ${this._actionField('Centre Tap Action', 'global', 'center_tap_action')}
-          ${this._actionField('Centre Hold Action', 'global', 'center_hold_action')}
-        </div>
-      </div>
+      </div>`).join('')}
 
       <div class="section">
         <div class="section-title">
-          <span>Monitored Entities (${c.entities.length})</span>
+          <span>Entities (${c.entities.length})</span>
           <span>
             <button class="btn" id="btn-toggle-entities">${this._openEntities.size ? 'Collapse all' : 'Expand all'}</button>
-            <button class="btn" id="btn-add-entity">+ Add Entity</button>
+            <button class="btn" id="btn-add-entity">+ Add entity</button>
           </span>
         </div>
         <div class="hint">
@@ -1012,43 +1062,7 @@ class RehoboamCardEditor extends HTMLElement {
                 <button class="btn btn-danger btn-remove" data-idx="${idx}">Remove</button>
               </summary>
               <div class="grid">
-                <div class="field" style="grid-column: span 2;">
-                  <label>Entity ID${tipIcon('entity')}</label>
-                  ${
-                    hasEntityPicker
-                      ? `<ha-entity-picker class="ent-picker" data-idx="${idx}" value="${esc(ent.entity)}" allow-custom-entity></ha-entity-picker>`
-                      : `<input class="ent-input" data-idx="${idx}" data-key="entity" data-type="string" type="text" value="${esc(ent.entity)}" placeholder="sensor.living_room_pm25" />`
-                  }
-                </div>
-                <div class="field">
-                  <label>Display Name (optional)${tipIcon('name')}</label>
-                  <input class="ent-input" data-idx="${idx}" data-key="name" data-type="string" type="text" value="${esc(ent.name)}" placeholder="Auto from entity" />
-                </div>
-                <div class="field">
-                  <label>Divergence Category${tipIcon('category')}</label>
-                  <input class="ent-input" data-idx="${idx}" data-key="category" data-type="string" type="text" value="${esc(ent.category)}" placeholder="SYSTEM ANOMALY" />
-                </div>
-                <div class="field">
-                  <label>Baseline (0% Normal Value)${tipIcon('baseline')}</label>
-                  <input class="ent-input" data-idx="${idx}" data-key="baseline" data-type="number" type="number" step="any" value="${esc(ent.baseline ?? 0)}" />
-                </div>
-                <div class="field">
-                  <label>Critical (100% Divergence Value)${tipIcon('critical')}</label>
-                  <input class="ent-input" data-idx="${idx}" data-key="critical" data-type="number" type="number" step="any" value="${esc(ent.critical ?? 100)}" />
-                </div>
-                ${this._rangeField('Angle Override (°, empty = auto)', 'angle', 0, 360, 1, { idx, value: ent.angle, placeholder: 'Auto', unsetAt: this._autoAngle(idx) })}
-                ${this._rangeField('Monitoring Threshold (sensor value)', 'monitoring_threshold', tb.lo, tb.hi, tb.step, { idx, value: ent.monitoring_threshold, placeholder: 'Use global', unsetAt: tb.monAt, cls: 'ent-threshold', tip: 'ent_monitoring_threshold' })}
-                ${this._rangeField('Divergence Threshold (sensor value)', 'divergence_threshold', tb.lo, tb.hi, tb.step, { idx, value: ent.divergence_threshold, placeholder: 'Use global', unsetAt: tb.divAt, cls: 'ent-threshold', tip: 'ent_divergence_threshold' })}
-                <div class="field">
-                  <label>Unit Override (optional)${tipIcon('unit')}</label>
-                  <input class="ent-input" data-idx="${idx}" data-key="unit" data-type="string" type="text" value="${esc(ent.unit)}" placeholder="Auto" />
-                </div>
-                <div class="checkbox-row">
-                  <input class="ent-check" id="chk-${idx}" data-idx="${idx}" data-key="always_visible" type="checkbox" ${ent.always_visible ? 'checked' : ''} />
-                  <label for="chk-${idx}">Always Visible Callout</label>${tipIcon('always_visible')}
-                </div>
-                ${this._actionField('Callout Tap Action (default: more-info)', 'entity', 'tap_action', idx)}
-                ${this._actionField('Callout Hold Action', 'entity', 'hold_action', idx)}
+                ${ENTITY_SETTINGS.map(st => this._entityField(st, ent, idx, tb, hasEntityPicker)).join('')}
               </div>
             </details>
           `;
@@ -1061,11 +1075,13 @@ class RehoboamCardEditor extends HTMLElement {
 
     const root = this.shadowRoot;
 
-    // Bind global fields
-    root.getElementById('f-theme_mode').addEventListener('change', e => this._onGlobalChange('theme_mode', e.target.value));
-    root.getElementById('f-ring_shading').addEventListener('change', e => this._onGlobalChange('ring_shading', e.target.checked));
-    root.getElementById('f-font_family').addEventListener('change', e => this._onGlobalChange('font_family', e.target.value));
-    root.getElementById('f-height').addEventListener('change', e => this._onGlobalChange('height', e.target.value));
+    // Bind card-level fields
+    root.querySelectorAll('.set-input').forEach(inp => {
+      inp.addEventListener('change', e => this._onGlobalChange(inp.dataset.key, e.target.value));
+    });
+    root.querySelectorAll('.set-check').forEach(chk => {
+      chk.addEventListener('change', e => this._onGlobalChange(chk.dataset.key, e.target.checked));
+    });
     this._bindRangeRows();
 
     // Bind Add / Remove Entity buttons
@@ -1220,6 +1236,11 @@ class RehoboamCard extends HTMLElement {
       const n = value === undefined || value === null || value === '' ? NaN : Number(value);
       return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : def;
     };
+    // Default and limits from CARD_SETTINGS
+    const opt = key => {
+      const st = SETTING[key];
+      return num(config[key], st.nullable ? null : st.default, st.min, st.max);
+    };
 
     const themeMode = String(config.theme_mode || 'dark').toLowerCase();
     // Empty or 'auto': the eclipse turns toward the most diverged entity. A number fixes it.
@@ -1227,39 +1248,39 @@ class RehoboamCard extends HTMLElement {
     const eclipseFollow = eclipseRaw === undefined || eclipseRaw === null || eclipseRaw === '' ||
       String(eclipseRaw).toLowerCase() === 'auto' || !Number.isFinite(Number(eclipseRaw));
     const eclipseAngleDeg = eclipseFollow ? null : Number(eclipseRaw);
-    const testDiv = num(config.test_divergence, null, 0, 1);
+    const testDiv = opt('test_divergence');
 
     this._config = {
       theme_mode: ['light', 'auto'].includes(themeMode) ? themeMode : 'dark',
       font_family: config.font_family ? String(config.font_family) : DEFAULT_FONT,
-      font_size: num(config.font_size, DEFAULT_FONT_SIZE, 8, 32),
+      font_size: opt('font_size'),
       height: config.height ? String(config.height) : DEFAULT_HEIGHT,
       eclipse_angle: eclipseAngleDeg,
       eclipse_follow: eclipseFollow,
-      eclipse_intensity: num(config.eclipse_intensity, 1.0, 0, 2),
-      ray_intensity: num(config.ray_intensity, 0.35, 0, 1),
-      facet_shading: num(config.facet_shading, 0.6, 0, 1),
+      eclipse_intensity: opt('eclipse_intensity'),
+      ray_intensity: opt('ray_intensity'),
+      facet_shading: opt('facet_shading'),
       ring_shading: config.ring_shading !== false,
-      amplitude_scale: num(config.amplitude_scale, 1.25, 0.1, 3),
-      strata_width: num(config.strata_width, 1.0, 0.3, 2.5),
-      peak_width: num(config.peak_width, 1.0, 0.4, 3),
-      peak_sharpness: num(config.peak_sharpness, 0, 0, 1),
-      peak_height: num(config.peak_height, 1.0, 0.3, 1.43),
-      baseline_height: num(config.baseline_height, 1.0, 0, 5),
-      ambient_count: Math.round(num(config.ambient_count, 3, 0, 12)),
-      ambient_size: num(config.ambient_size, 0.3, 0, 1),
-      ambient_width: num(config.ambient_width, 1.0, 0.3, 2.5),
-      ambient_lifetime: num(config.ambient_lifetime, 25, 4, 300),
-      transition_tau: num(config.transition_tau, 2.2, 0.2, 60),
-      ring_scale: num(config.ring_scale, 0.42, 0.1, 1),
-      resolution_scale: num(config.resolution_scale, 0.65, 0.1, 2),
-      fps_idle: num(config.fps_idle, 24, 1, 120),
-      fps_active: num(config.fps_active, 45, 1, 120),
-      divergence_threshold: num(config.divergence_threshold, 0.15, 0, 1),
-      monitoring_threshold: num(config.monitoring_threshold, null, 0, 1),
+      amplitude_scale: opt('amplitude_scale'),
+      strata_width: opt('strata_width'),
+      peak_width: opt('peak_width'),
+      peak_sharpness: opt('peak_sharpness'),
+      peak_height: opt('peak_height'),
+      baseline_height: opt('baseline_height'),
+      ambient_count: Math.round(opt('ambient_count')),
+      ambient_size: opt('ambient_size'),
+      ambient_width: opt('ambient_width'),
+      ambient_lifetime: opt('ambient_lifetime'),
+      transition_tau: opt('transition_tau'),
+      ring_scale: opt('ring_scale'),
+      resolution_scale: opt('resolution_scale'),
+      fps_idle: opt('fps_idle'),
+      fps_active: opt('fps_active'),
+      divergence_threshold: opt('divergence_threshold'),
+      monitoring_threshold: opt('monitoring_threshold'),
       test_divergence: testDiv,
       center_entity: config.center_entity || null,
-      hold_time: num(config.hold_time, DEFAULT_HOLD_MS, 150, 5000),
+      hold_time: opt('hold_time'),
       center_tap_action: config.center_tap_action || null,
       center_hold_action: config.center_hold_action || null,
       entities: Array.isArray(config.entities) ? config.entities : []

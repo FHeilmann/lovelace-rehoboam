@@ -21,3 +21,13 @@ jobs:
         with:
           category: plugin
           ignore: "description topics images"
+
+  readme:
+    runs-on: ubuntu-latest
+    name: README option tables match the settings list
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check README option tables
+        run: node scripts/readme-options.mjs --check
