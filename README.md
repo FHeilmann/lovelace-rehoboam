@@ -360,3 +360,11 @@ The README images come from the playground. With the server running, `node scrip
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](https://github.com/FHeilmann/lovelace-rehoboam/blob/main/LICENSE) file for details.
+
+---
+
+## Support
+
+If you like this card, you can support its development:
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/N2L5299L4I)
