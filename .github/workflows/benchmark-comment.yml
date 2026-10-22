@@ -1,0 +1,58 @@
+name: Benchmark comment
+
+# Posts the result of the "Benchmark" workflow on its pull request, or updates the earlier
+# comment. It runs the scripts of the default branch and uses the artifact as data only.
+on:
+  workflow_run:
+    workflows:
+      - Benchmark
+    types:
+      - completed
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: write
+
+jobs:
+  comment:
+    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download results
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: benchmark
+          path: bench
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Post or update the comment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          pr=$(head -c 16 bench/pr-number | tr -d '[:space:]')
+          if ! [[ "$pr" =~ ^[0-9]+$ ]]; then
+            echo "::error::No valid pull request number in the artifact"
+            exit 1
+          fi
+          # The artifact names the pull request; it must be the one the measured commit belongs to
+          if [ "$(gh api "repos/$REPO/pulls/$pr" --jq .head.sha)" != "$HEAD_SHA" ]; then
+            echo "::error::Pull request #$pr does not point to $HEAD_SHA"
+            exit 1
+          fi
+          node scripts/benchmark-comment.mjs bench/results.json > "$RUNNER_TEMP/comment.md"
+          id=$(gh api "repos/$REPO/issues/$pr/comments" --paginate \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("<!-- rehoboam-benchmark -->"))) | .id' | head -n 1)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$id" -F "body=@$RUNNER_TEMP/comment.md" > /dev/null
+          else
+            gh api "repos/$REPO/issues/$pr/comments" -F "body=@$RUNNER_TEMP/comment.md" > /dev/null
+          fi

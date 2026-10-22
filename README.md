@@ -342,6 +342,8 @@ python3 -m http.server 8766 --bind 127.0.0.1
 
 Then open `http://127.0.0.1:8766/harness.html`. URL options for testing: `grid=1` shows the 4 theme and eclipse presets side by side, `one=0` to `one=3` shows one preset, and `panel=0` hides the settings panel.
 
+Pull requests that change the card get a performance comment: the `Benchmark` workflow measures the CPU time per frame, per state update and per config change for `main` and for the pull request in headless Chrome, with 10, 50 and 100 entities whose callouts are hidden, monitoring or diverging, and `Benchmark comment` posts the table. To run it locally: `node scripts/benchmark.mjs --base <old card.js> --head lovelace-rehoboam.js`.
+
 The README images come from the playground. With the server running, `node scripts/screenshots.mjs <tmp dir>` captures them with headless Chromium, and `python3 scripts/build-images.py <tmp dir> images` turns them into `images/hero.webp` and the PNGs (needs Pillow).
 
 ---

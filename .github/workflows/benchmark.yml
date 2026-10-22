@@ -1,0 +1,49 @@
+name: Benchmark
+
+# Measures the card on the base branch and on the pull request and stores the numbers as an
+# artifact. This run has a read-only token, also for pull requests from forks; the
+# "Benchmark comment" workflow posts the result.
+on:
+  pull_request:
+    paths:
+      - lovelace-rehoboam.js
+      - scripts/benchmark.mjs
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Card from the base branch
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: git show "origin/$BASE_REF:lovelace-rehoboam.js" > "$RUNNER_TEMP/base.js"
+
+      - name: Run the benchmark
+        run: |
+          mkdir -p bench
+          node scripts/benchmark.mjs --base "$RUNNER_TEMP/base.js" --head lovelace-rehoboam.js --rounds 5 --out bench/results.json
+
+      - name: Store the pull request number
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: echo "$PR_NUMBER" > bench/pr-number
+
+      - name: Job summary
+        run: node scripts/benchmark-comment.mjs bench/results.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload results
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: benchmark
+          path: bench/
+          retention-days: 7
