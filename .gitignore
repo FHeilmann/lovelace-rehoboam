@@ -14,3 +14,7 @@ npm-debug.log*
 
 # Node (if ever run locally for tooling)
 node_modules/
+
+# Documentation / Planning
+docs/
+
