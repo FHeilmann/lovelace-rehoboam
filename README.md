@@ -365,6 +365,6 @@ This project is licensed under the MIT License - see the [LICENSE](https://githu
 
 ## Support
 
-If you like this card, you can support its development:
+If this card brightens your dashboard and you want to say thanks, you can buy me a coffee.
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/N2L5299L4I)
