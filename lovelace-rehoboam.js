@@ -360,7 +360,7 @@ function easeTimeForProgress(progress, [x1, y1, x2, y2]) {
   }
   return bez((lo + hi) * 0.5, x1, x2);
 }
-const CARD_VERSION = '0.15.0';
+const CARD_VERSION = '0.16.0';
 
 console.info(
   `%c LOVELACE-REHOBOAM %c v${CARD_VERSION} `,
